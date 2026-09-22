@@ -233,7 +233,7 @@ export default function Dashboard({ state, onNavigate, onMarkClassAttendance, on
       )}
 
       {/* 3. Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
           {
             label: 'Attendance',
@@ -283,7 +283,7 @@ export default function Dashboard({ state, onNavigate, onMarkClassAttendance, on
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onNavigate(item.page)}
-              className="rounded-2xl p-4 text-left transition-all cursor-pointer shadow-sm"
+              className="rounded-2xl p-3 sm:p-4 text-left transition-all cursor-pointer shadow-sm"
               style={{ background: '#161b22', border: '1px solid #2d3748' }}
             >
               <div className="flex items-center justify-between mb-2">
@@ -306,7 +306,7 @@ export default function Dashboard({ state, onNavigate, onMarkClassAttendance, on
 
       {/* 4. Today's Classes Hero */}
       <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: '#1c2230', borderBottom: '1px solid #2d3748' }}>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4" style={{ background: '#1c2230', borderBottom: '1px solid #2d3748' }}>
           <div className="flex items-center gap-2">
             <div className="inline-flex">
               <CalendarBlank size={18} weight="duotone" className="text-indigo-400" />
@@ -356,7 +356,7 @@ export default function Dashboard({ state, onNavigate, onMarkClassAttendance, on
               return (
                 <div
                   key={cls.id}
-                  className="px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4 transition-colors hover:bg-slate-800/20"
+                  className="px-4 sm:px-6 py-3.5 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 transition-colors hover:bg-slate-800/20"
                   style={{
                     background: status === 'ongoing' ? '#10b98108' : 'transparent',
                   }}
@@ -389,10 +389,10 @@ export default function Dashboard({ state, onNavigate, onMarkClassAttendance, on
                     </div>
                   </div>
 
-                  <div className="flex gap-2 flex-shrink-0 self-start sm:self-auto">
+                  <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto">
                     {marked ? (
                       <span
-                        className="text-xs px-3.5 py-1.5 rounded-xl font-semibold inline-flex items-center gap-1.5"
+                        className="w-full sm:w-auto text-xs px-3.5 py-2 sm:py-1.5 rounded-xl font-semibold inline-flex items-center justify-center gap-1.5"
                         style={{
                           background: marked === 'present' ? '#10b98118' : '#ef444418',
                           color: marked === 'present' ? '#10b981' : '#ef4444',
@@ -405,10 +405,10 @@ export default function Dashboard({ state, onNavigate, onMarkClassAttendance, on
                     ) : (
                       <>
                         <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => onMarkClassAttendance(cls.id, 'present')}
-                          className="text-xs px-3.5 py-1.5 rounded-xl font-semibold transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+                          className="flex-1 sm:flex-none justify-center text-xs px-3.5 py-2 sm:py-1.5 rounded-xl font-semibold transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
                           style={{ background: '#10b98118', color: '#10b981', border: '1px solid #10b98140' }}
                           title="Mark Present for today's class"
                         >
@@ -416,10 +416,10 @@ export default function Dashboard({ state, onNavigate, onMarkClassAttendance, on
                           <span>Present</span>
                         </motion.button>
                         <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => onMarkClassAttendance(cls.id, 'absent')}
-                          className="text-xs px-3.5 py-1.5 rounded-xl font-semibold transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+                          className="flex-1 sm:flex-none justify-center text-xs px-3.5 py-2 sm:py-1.5 rounded-xl font-semibold transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
                           style={{ background: '#ef444418', color: '#ef4444', border: '1px solid #ef444440' }}
                           title="Mark Absent for today's class"
                         >
@@ -437,7 +437,7 @@ export default function Dashboard({ state, onNavigate, onMarkClassAttendance, on
       </div>
 
       {/* 5. 7-Day Attendance Trend with Increased Height */}
-      <div className="rounded-2xl p-6 shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+      <div className="rounded-2xl p-4 sm:p-6 shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="text-base font-semibold text-slate-100">7-Day Attendance Trend</div>
@@ -451,7 +451,7 @@ export default function Dashboard({ state, onNavigate, onMarkClassAttendance, on
       </div>
 
       {/* 6. Daily tasks sorted by Priority with Animated Icons */}
-      <div className="rounded-2xl p-6 shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+      <div className="rounded-2xl p-4 sm:p-6 shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-slate-100">Today's Priority Tasks</span>

@@ -257,7 +257,7 @@ export default function Todo({ state, onUpdate }: Props) {
 
       {/* Stats + graph */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-2xl p-6" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+        <div className="lg:col-span-2 rounded-2xl p-4 sm:p-6" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
           <div className="flex items-center justify-between mb-2">
             <div>
               <div className="text-base font-semibold" style={{ color: '#e2e8f0' }}>
@@ -296,7 +296,7 @@ export default function Todo({ state, onUpdate }: Props) {
       </div>
 
       {/* Add new task with priority selection */}
-      <div className="rounded-2xl p-5" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+      <div className="rounded-2xl p-4 sm:p-5" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
         <div className="flex flex-col sm:flex-row gap-2.5">
           <input
             value={newText}
@@ -376,7 +376,7 @@ export default function Todo({ state, onUpdate }: Props) {
               <motion.div
                 key={t.id}
                 layout
-                className="flex items-center gap-3.5 rounded-2xl px-5 py-3.5 group transition-all hover:border-slate-600 shadow-sm"
+                className="flex items-center gap-2.5 sm:gap-3.5 rounded-2xl px-3.5 sm:px-5 py-3 sm:py-3.5 group transition-all hover:border-slate-600 shadow-sm"
                 style={{
                   background: '#161b22',
                   border: `1px solid ${priority === 'high' ? 'rgba(239, 68, 68, 0.35)' : '#2d3748'}`,
@@ -413,7 +413,7 @@ export default function Todo({ state, onUpdate }: Props) {
                   {t.type}
                 </span>
 
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <div className="flex items-center gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
                   <button
                     onClick={() => startEditTodo(t)}
                     title="Edit task"
@@ -444,7 +444,7 @@ export default function Todo({ state, onUpdate }: Props) {
           {completed.map(t => (
             <div
               key={t.id}
-              className="flex items-center gap-3.5 rounded-2xl px-5 py-3 transition-opacity opacity-75 hover:opacity-100 group"
+              className="flex items-center gap-2.5 sm:gap-3.5 rounded-2xl px-3.5 sm:px-5 py-3 transition-opacity opacity-75 hover:opacity-100 group"
               style={{ background: '#161b22', border: '1px solid #2d3748' }}
             >
               <button
@@ -463,7 +463,7 @@ export default function Todo({ state, onUpdate }: Props) {
                 </span>
               )}
 
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+              <div className="flex items-center gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
                 <button
                   onClick={() => startEditTodo(t)}
                   title="Edit task"
@@ -531,7 +531,7 @@ export default function Todo({ state, onUpdate }: Props) {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="rounded-2xl p-6 max-w-md w-full shadow-2xl border space-y-4"
+              className="rounded-2xl p-4 sm:p-6 max-w-md w-full shadow-2xl border space-y-4"
               style={{ background: '#161b22', borderColor: '#2d3748' }}
             >
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">

@@ -114,7 +114,7 @@ export default function Profile({ state, onUpdate }: Props) {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2.5" style={{ color: '#e2e8f0' }}>
             <UserCircle size={26} weight="duotone" className="text-indigo-400" />
@@ -130,14 +130,14 @@ export default function Profile({ state, onUpdate }: Props) {
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => setEditing(true)}
-            className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl font-semibold cursor-pointer"
+            className="self-start sm:self-auto flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl font-semibold cursor-pointer"
             style={{ background: '#6366f118', color: '#818cf8', border: '1px solid #6366f130' }}
           >
             <PencilSimple size={14} weight="bold" />
             <span>Edit Profile</span>
           </motion.button>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex gap-2 self-start sm:self-auto">
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
@@ -161,15 +161,15 @@ export default function Profile({ state, onUpdate }: Props) {
       </div>
 
       {/* Avatar + name card */}
-      <div className="rounded-2xl p-6 flex flex-col sm:flex-row items-center sm:items-start gap-5 shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+      <div className="rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
         <div
-          className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold flex-shrink-0 shadow-lg"
+          className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl font-bold flex-shrink-0 shadow-lg"
           style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff' }}
         >
           {(state.user.name || 'S').charAt(0).toUpperCase()}
         </div>
         <div className="text-center sm:text-left flex-1 min-w-0">
-          <div className="text-xl font-bold text-slate-100 flex items-center justify-center sm:justify-start gap-2">
+          <div className="text-lg sm:text-xl font-bold text-slate-100 flex items-center justify-center sm:justify-start gap-2">
             <span>{state.user.name || 'Student User'}</span>
             <Sparkle size={16} weight="fill" className="text-amber-400" />
           </div>
@@ -183,7 +183,7 @@ export default function Profile({ state, onUpdate }: Props) {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-3.5 sm:grid-cols-4">
         {[
           {
             label: 'Attendance',
@@ -212,21 +212,21 @@ export default function Profile({ state, onUpdate }: Props) {
         ].map(s => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="rounded-2xl p-4 text-center shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+            <div key={s.label} className="rounded-2xl p-3 sm:p-4 text-center shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
               <div className="flex justify-center mb-1">
                 <div style={{ color: s.color }}>
-                  <Icon size={22} weight="duotone" />
+                  <Icon size={20} weight="duotone" />
                 </div>
               </div>
-              <div className="text-xl font-bold font-mono" style={{ color: s.color }}>{s.value}</div>
-              <div className="text-xs mt-0.5 text-slate-400">{s.label}</div>
+              <div className="text-lg sm:text-xl font-bold font-mono" style={{ color: s.color }}>{s.value}</div>
+              <div className="text-[11px] sm:text-xs mt-0.5 text-slate-400">{s.label}</div>
             </div>
           );
         })}
       </div>
 
       {/* Profile fields */}
-      <div className="rounded-2xl p-6 space-y-4 shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+      <div className="rounded-2xl p-4 sm:p-6 space-y-4 shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
         <div className="text-sm font-semibold text-slate-100 flex items-center gap-2 border-b pb-3" style={{ borderColor: '#2d3748' }}>
           <IdentificationCard size={18} weight="duotone" className="text-indigo-400" />
           <span>Academic & Personal Credentials</span>
@@ -269,7 +269,7 @@ export default function Profile({ state, onUpdate }: Props) {
       </div>
 
       {/* Subject summary */}
-      <div className="rounded-2xl p-6 shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+      <div className="rounded-2xl p-4 sm:p-6 shadow-sm" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
         <div className="text-sm font-semibold mb-4 text-slate-100 flex items-center gap-2">
           <span>Enrolled Subjects & Attendance</span>
         </div>
@@ -277,19 +277,19 @@ export default function Profile({ state, onUpdate }: Props) {
           {state.subjects.map(s => {
             const pct = calcAttendancePercent(s);
             return (
-              <div key={s.id} className="flex items-center gap-3">
+              <div key={s.id} className="flex items-center gap-2.5 sm:gap-3">
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium truncate text-slate-200">{s.name}</div>
-                  <div className="text-[11px] text-slate-500 font-mono">{s.code}</div>
+                  <div className="text-[10px] sm:text-[11px] text-slate-500 font-mono">{s.code}</div>
                 </div>
                 <div
-                  className="text-xs font-semibold w-12 text-right font-mono"
+                  className="text-xs font-semibold w-10 sm:w-12 text-right font-mono flex-shrink-0"
                   style={{ color: pct >= 75 ? '#10b981' : '#ef4444' }}
                 >
                   {pct}%
                 </div>
-                <div className="w-24 h-2 rounded-full overflow-hidden flex-shrink-0 bg-slate-800">
+                <div className="w-16 sm:w-24 h-2 rounded-full overflow-hidden flex-shrink-0 bg-slate-800">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}

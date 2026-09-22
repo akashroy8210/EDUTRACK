@@ -185,7 +185,7 @@ export default function Blog({ state, onUpdate }: Props) {
 
       {/* TOP COMPOSER: New Blog Entry (Exact structure from user reference image) */}
       <div
-        className="rounded-2xl p-6 space-y-4 shadow-xl relative"
+        className="rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl relative"
         style={{
           background: '#161b22',
           border: '1px solid #334155',
@@ -360,10 +360,10 @@ export default function Blog({ state, onUpdate }: Props) {
           </span>
         </div>
 
-        <div className="relative pl-6 sm:pl-8 space-y-8">
+        <div className="relative pl-0 sm:pl-8 space-y-6 sm:space-y-8">
           {/* Continuous vertical timeline connector line */}
           <div
-            className="absolute left-[29px] sm:left-[37px] top-6 bottom-6 w-0.5"
+            className="absolute left-[20px] sm:left-[37px] top-6 bottom-6 w-0.5"
             style={{ background: 'linear-gradient(to bottom, #6366f1 0%, #334155 100%)' }}
           />
 
@@ -376,27 +376,27 @@ export default function Blog({ state, onUpdate }: Props) {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: index * 0.05 }}
-                className="relative flex items-start gap-5 sm:gap-6 group"
+                className="relative flex items-start gap-3 sm:gap-6 group"
               >
                 {/* Left Date Node on Timeline (e.g. Oct / 26) */}
                 <div
-                  className="z-10 flex flex-col items-center justify-center w-12 h-14 rounded-2xl flex-shrink-0 shadow-md select-none"
+                  className="z-10 flex flex-col items-center justify-center w-10 sm:w-12 h-12 sm:h-14 rounded-xl sm:rounded-2xl flex-shrink-0 shadow-md select-none"
                   style={{
                     background: '#161b22',
                     border: '1.5px solid #4f46e5',
                   }}
                 >
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-400 leading-none">
+                  <span className="text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-400 leading-none">
                     {dateInfo.month}
                   </span>
-                  <span className="text-base font-bold font-mono text-slate-100 mt-1 leading-none">
+                  <span className="text-sm sm:text-base font-bold font-mono text-slate-100 mt-1 leading-none">
                     {dateInfo.day}
                   </span>
                 </div>
 
                 {/* Right Content Card (Matches user reference card design) */}
                 <div
-                  className="flex-1 rounded-2xl p-5 sm:p-6 transition-all hover:border-slate-500 shadow-md relative"
+                  className="flex-1 rounded-2xl p-4 sm:p-6 transition-all hover:border-slate-500 shadow-md relative min-w-0"
                   style={{
                     background: '#161b22',
                     border: '1px solid #2d3748',

@@ -332,7 +332,7 @@ export default function Habits({ state, onUpdate }: Props) {
                     Done!
                   </span>
                 )}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => startEditHabit(h)}
                     title={h.isEditable === false ? `Editable in ${h.daysRemainingForEdit ?? 7} day(s)` : 'Edit habit'}
@@ -365,7 +365,7 @@ export default function Habits({ state, onUpdate }: Props) {
       </div>
 
       {/* 14-Day Analytics Graph with increased height */}
-      <div className="rounded-xl p-6" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+      <div className="rounded-xl p-4 sm:p-6" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
         <div className="flex items-center justify-between mb-2">
           <div>
             <div className="text-base font-semibold" style={{ color: '#e2e8f0' }}>14-Day Completion Analytics</div>
@@ -384,7 +384,7 @@ export default function Habits({ state, onUpdate }: Props) {
       </div>
 
       {/* Per-habit history heatmap with clearly visible DATES */}
-      <div className="rounded-xl p-6" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+      <div className="rounded-xl p-4 sm:p-6" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="text-base font-semibold" style={{ color: '#e2e8f0' }}>Per-Habit — Last 14 Days</div>
@@ -488,7 +488,7 @@ export default function Habits({ state, onUpdate }: Props) {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rounded-2xl p-6 w-full max-w-md space-y-4"
+            className="rounded-2xl p-4 sm:p-6 w-full max-w-md space-y-4"
             style={{ background: '#161b22', border: '1px solid #334155' }}
           >
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: '#2d3748' }}>

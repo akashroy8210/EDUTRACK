@@ -85,6 +85,7 @@ function AttendanceRing({ percent, color }: { percent: number; color: string }) 
 export default function Attendance({ state, onNavigate }: Props) {
   // Selected course filter (optional detail drill-down)
   const [selectedCourse] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'low'>('all');
   // Real-time current date in YYYY-MM-DD format
   const today = getTodayDate();
 
@@ -139,6 +140,8 @@ export default function Attendance({ state, onNavigate }: Props) {
     courseList.reduce((acc, c) => acc + c.percent, 0) / Math.max(courseList.length, 1)
   );
 
+  const displayedCourses = courseList.filter(c => filter === 'all' || c.percent < 75);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -174,6 +177,32 @@ export default function Attendance({ state, onNavigate }: Props) {
         </div>
       </div>
 
+      {/* Segmented Filter Control */}
+      {courseList.length > 0 && (
+        <div className="flex rounded-xl p-1 w-full sm:max-w-xs shadow-xs" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+          <button
+            onClick={() => setFilter('all')}
+            className="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center"
+            style={{
+              background: filter === 'all' ? '#6366f1' : 'transparent',
+              color: filter === 'all' ? '#fff' : '#94a3b8',
+            }}
+          >
+            All Courses ({courseList.length})
+          </button>
+          <button
+            onClick={() => setFilter('low')}
+            className="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center"
+            style={{
+              background: filter === 'low' ? '#ef4444' : 'transparent',
+              color: filter === 'low' ? '#fff' : '#94a3b8',
+            }}
+          >
+            Below 75% ({courseList.filter(c => c.percent < 75).length})
+          </button>
+        </div>
+      )}
+
       {/* Empty State when no classes scheduled */}
       {courseList.length === 0 ? (
         <div
@@ -201,8 +230,8 @@ export default function Attendance({ state, onNavigate }: Props) {
         </div>
       ) : (
         /* Course Attendance Cards */
-        <div className="grid grid-cols-1 gap-5">
-          {courseList.map(course => {
+        <div className="grid grid-cols-1 gap-4 sm:gap-5">
+          {displayedCourses.map(course => {
             const safe = course.percent >= 85;
             const moderate = course.percent >= 75 && course.percent < 85;
             const risk = course.percent < 75;
@@ -243,22 +272,22 @@ export default function Attendance({ state, onNavigate }: Props) {
                   </div>
 
                   {/* Detailed Metric Pills */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono self-start lg:self-auto">
-                    <div className="rounded-xl bg-black/25 p-2.5 text-center min-w-[75px] border border-slate-800">
-                      <div className="text-[11px] text-slate-400">Total</div>
-                      <div className="font-semibold text-slate-200 text-sm mt-0.5">{course.totalClasses}</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono w-full lg:w-auto">
+                    <div className="rounded-xl bg-black/25 p-2 sm:p-2.5 text-center min-w-[70px] border border-slate-800">
+                      <div className="text-[10px] sm:text-[11px] text-slate-400">Total</div>
+                      <div className="font-semibold text-slate-200 text-xs sm:text-sm mt-0.5">{course.totalClasses}</div>
                     </div>
-                    <div className="rounded-xl bg-black/25 p-2.5 text-center min-w-[75px] border border-slate-800">
-                      <div className="text-[11px] text-slate-400">Conducted</div>
-                      <div className="font-semibold text-indigo-300 text-sm mt-0.5">{course.conductedClasses}</div>
+                    <div className="rounded-xl bg-black/25 p-2 sm:p-2.5 text-center min-w-[70px] border border-slate-800">
+                      <div className="text-[10px] sm:text-[11px] text-slate-400">Conducted</div>
+                      <div className="font-semibold text-indigo-300 text-xs sm:text-sm mt-0.5">{course.conductedClasses}</div>
                     </div>
-                    <div className="rounded-xl bg-black/25 p-2.5 text-center min-w-[75px] border border-slate-800">
-                      <div className="text-[11px] text-slate-400">Attended</div>
-                      <div className="font-semibold text-emerald-400 text-sm mt-0.5">{course.attendedClasses}</div>
+                    <div className="rounded-xl bg-black/25 p-2 sm:p-2.5 text-center min-w-[70px] border border-slate-800">
+                      <div className="text-[10px] sm:text-[11px] text-slate-400">Attended</div>
+                      <div className="font-semibold text-emerald-400 text-xs sm:text-sm mt-0.5">{course.attendedClasses}</div>
                     </div>
-                    <div className="rounded-xl bg-black/25 p-2.5 text-center min-w-[75px] border border-slate-800">
-                      <div className="text-[11px] text-slate-400">Missed</div>
-                      <div className="font-semibold text-rose-400 text-sm mt-0.5">{course.missedClasses}</div>
+                    <div className="rounded-xl bg-black/25 p-2 sm:p-2.5 text-center min-w-[70px] border border-slate-800">
+                      <div className="text-[10px] sm:text-[11px] text-slate-400">Missed</div>
+                      <div className="font-semibold text-rose-400 text-xs sm:text-sm mt-0.5">{course.missedClasses}</div>
                     </div>
                   </div>
                 </div>
@@ -350,7 +379,7 @@ export default function Attendance({ state, onNavigate }: Props) {
             <div className="text-xs text-slate-400">75% attendance threshold</div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs font-mono">
+            <table className="w-full text-xs font-mono min-w-[640px]">
               <thead>
                 <tr style={{ background: '#0d1117', color: '#64748b' }}>
                   {['Course Name', 'Code', 'Total Classes', 'Conducted', 'Attended', 'Missed', 'Attendance %', 'Need for 75%', 'Can Miss', 'Status'].map(h => (

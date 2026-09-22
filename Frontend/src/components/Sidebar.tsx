@@ -50,7 +50,7 @@ const navItems: { page: Page; label: string; icon: any }[] = [
 export default function Sidebar({ currentPage, onNavigate, user, onLogout }: SidebarProps) {
   return (
     <aside
-      className="fixed left-0 top-0 h-full w-56 flex flex-col z-20 select-none"
+      className="fixed left-0 top-0 h-full w-56 hidden md:flex flex-col z-20 select-none"
       style={{ background: '#161b22', borderRight: '1px solid #2d3748' }}
     >
       {/* Brand Header */}

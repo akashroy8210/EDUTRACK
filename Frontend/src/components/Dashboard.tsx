@@ -24,6 +24,22 @@ import Habits from './pages/Habits';
 import Ambitions from './pages/Ambitions';
 import Profile from './pages/Profile';
 import SocialMedia from './pages/SocialMedia';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  SquaresFour,
+  ChartPieSlice,
+  CalendarDots,
+  CheckSquareOffset,
+  DotsThreeOutline,
+  Fire,
+  GraduationCap,
+  Globe,
+  Target,
+  Notebook,
+  UserCircle,
+  SignOut,
+  X,
+} from '@phosphor-icons/react';
 
 type Page =
   | 'dashboard'
@@ -41,6 +57,7 @@ export default function Dashboard() {
   const [state, setState] = useState<AppState>(() => loadState());
   const [page, setPage] = useState<Page>('dashboard');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
 
   const update = useCallback((patch: Partial<AppState>) => {
     setState(prev => {
@@ -377,14 +394,58 @@ export default function Dashboard() {
   };
   const isProfileIncomplete = !state.user.rollNo || !state.user.branch || !state.user.semester;
 
+  const bottomTabs = [
+    { page: 'dashboard' as Page, label: 'Dashboard', icon: SquaresFour },
+    { page: 'attendance' as Page, label: 'Attendance', icon: ChartPieSlice },
+    { page: 'schedule' as Page, label: 'Schedule', icon: CalendarDots },
+    { page: 'todo' as Page, label: 'Tasks', icon: CheckSquareOffset },
+  ];
+
   return (
-    <div className="flex min-h-screen" style={{ background: '#0d1117' }}>
+    <div className="flex flex-col md:flex-row min-h-screen" style={{ background: '#0d1117' }}>
+      {/* Desktop Sidebar (hidden on mobile) */}
       <Sidebar currentPage={page} onNavigate={setPage} user={state.user} onLogout={handleLogout} />
-      <main className="flex-1 ml-56 min-h-screen overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-6 py-8">
+
+      {/* Mobile Top App Bar (visible on mobile only) */}
+      <header
+        className="md:hidden sticky top-0 z-30 px-4 py-3 border-b flex items-center justify-between backdrop-blur-md select-none"
+        style={{ background: 'rgba(22, 27, 34, 0.9)', borderColor: '#2d3748' }}
+      >
+        <button
+          onClick={() => {
+            setPage('profile');
+            setMoreSheetOpen(false);
+          }}
+          className="flex items-center gap-2.5 text-left cursor-pointer"
+        >
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}
+          >
+            {state.user.name ? state.user.name.charAt(0).toUpperCase() : 'S'}
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+              <span>{state.user.name ? state.user.name.split(' ')[0] : 'Student'}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block shadow-[0_0_6px_#34d399]" />
+            </div>
+            <div className="text-[10px] text-indigo-400 uppercase font-mono tracking-wider font-semibold">
+              EduTrack
+            </div>
+          </div>
+        </button>
+
+        <div className="text-[11px] font-mono font-medium text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700/60">
+          {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 ml-0 md:ml-56 min-h-screen overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-3.5 sm:px-6 py-4 sm:py-8 pb-24 md:pb-8">
           {isProfileIncomplete && page !== 'profile' && (
             <div
-              className="mb-6 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border shadow-sm"
+              className="mb-5 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border shadow-sm"
               style={{ background: '#6366f115', borderColor: '#6366f140' }}
             >
               <div className="flex items-center gap-3">
@@ -397,7 +458,7 @@ export default function Dashboard() {
               </div>
               <button
                 onClick={() => setPage('profile')}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white flex-shrink-0 cursor-pointer transition-all shadow"
+                className="w-full sm:w-auto text-center px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white flex-shrink-0 cursor-pointer transition-all shadow"
               >
                 Edit Profile →
               </button>
@@ -406,6 +467,158 @@ export default function Dashboard() {
           {pages[page]}
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation Bar (visible on mobile only) */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur-lg flex items-center justify-around py-2 px-1 select-none"
+        style={{ background: 'rgba(22, 27, 34, 0.95)', borderColor: '#2d3748' }}
+      >
+        {bottomTabs.map(tab => {
+          const Icon = tab.icon;
+          const isActive = page === tab.page && !moreSheetOpen;
+          return (
+            <button
+              key={tab.page}
+              onClick={() => {
+                setPage(tab.page);
+                setMoreSheetOpen(false);
+              }}
+              className="flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer relative"
+              style={{ color: isActive ? '#818cf8' : '#94a3b8' }}
+            >
+              <div className="relative">
+                <Icon size={22} weight={isActive ? 'duotone' : 'regular'} />
+                {isActive && (
+                  <motion.div
+                    layoutId="mobileNavPill"
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-400 shadow-[0_0_6px_#818cf8]"
+                  />
+                )}
+              </div>
+              <span className="text-[10px] mt-1 font-medium tracking-tight">{tab.label}</span>
+            </button>
+          );
+        })}
+
+        {/* 5th Tab: More */}
+        {(() => {
+          const isMoreActive =
+            moreSheetOpen ||
+            ['habits', 'exams', 'socialMedia', 'ambitions', 'blog', 'profile'].includes(page);
+          return (
+            <button
+              onClick={() => setMoreSheetOpen(prev => !prev)}
+              className="flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer relative"
+              style={{ color: isMoreActive ? '#818cf8' : '#94a3b8' }}
+            >
+              <div className="relative">
+                <DotsThreeOutline size={22} weight={isMoreActive ? 'fill' : 'regular'} />
+                {isMoreActive && (
+                  <motion.div
+                    layoutId="mobileNavPill"
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-400 shadow-[0_0_6px_#818cf8]"
+                  />
+                )}
+              </div>
+              <span className="text-[10px] mt-1 font-medium tracking-tight">More</span>
+            </button>
+          );
+        })()}
+      </nav>
+
+      {/* Slide-Up 'More' Bottom Sheet */}
+      <AnimatePresence>
+        {moreSheetOpen && (
+          <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+            {/* Backdrop Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMoreSheetOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            {/* Bottom Sheet Modal */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative z-10 rounded-t-3xl border-t p-5 pb-8 shadow-2xl space-y-4"
+              style={{ background: '#161b22', borderColor: '#2d3748' }}
+            >
+              {/* Sheet Drag Handle */}
+              <div className="w-10 h-1 rounded-full bg-slate-600 mx-auto" />
+
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h3 className="text-sm font-bold text-slate-200">More Tools & Navigation</h3>
+                <button
+                  onClick={() => setMoreSheetOpen(false)}
+                  className="p-1 text-slate-400 hover:text-slate-200 cursor-pointer rounded-lg hover:bg-white/5"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { page: 'habits' as Page, label: 'Daily Habits', icon: Fire, color: '#f59e0b' },
+                  { page: 'exams' as Page, label: 'Exams & Quizzes', icon: GraduationCap, color: '#6366f1' },
+                  { page: 'socialMedia' as Page, label: 'Social Detox', icon: Globe, color: '#10b981' },
+                  { page: 'ambitions' as Page, label: 'Ambitions & Goals', icon: Target, color: '#ec4899' },
+                  { page: 'blog' as Page, label: 'Daily Notes & Blog', icon: Notebook, color: '#06b6d4' },
+                  { page: 'profile' as Page, label: 'Profile & Settings', icon: UserCircle, color: '#8b5cf6' },
+                ].map(item => {
+                  const Icon = item.icon;
+                  const isCurrent = page === item.page;
+                  return (
+                    <button
+                      key={item.page}
+                      onClick={() => {
+                        setPage(item.page);
+                        setMoreSheetOpen(false);
+                      }}
+                      className="flex items-center gap-3 p-3 rounded-xl border text-left cursor-pointer transition-all"
+                      style={{
+                        background: isCurrent ? 'rgba(99, 102, 241, 0.15)' : '#0d1117',
+                        borderColor: isCurrent ? 'rgba(99, 102, 241, 0.35)' : '#2d3748',
+                        color: isCurrent ? '#a5b4fc' : '#cbd5e1',
+                      }}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${item.color}15`, color: item.color }}
+                      >
+                        <Icon size={18} weight={isCurrent ? 'fill' : 'regular'} />
+                      </div>
+                      <span className="text-xs font-semibold truncate">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sign Out Button in Sheet */}
+              <button
+                onClick={() => {
+                  setMoreSheetOpen(false);
+                  handleLogout();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer mt-2"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  borderColor: 'rgba(239, 68, 68, 0.25)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  color: '#f87171',
+                }}
+              >
+                <SignOut size={16} weight="bold" />
+                <span>Sign Out of EduTrack</span>
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

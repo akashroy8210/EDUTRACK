@@ -217,7 +217,7 @@ export default function Ambitions({ state, onUpdate }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2.5" style={{ color: '#e2e8f0' }}>
             <Target size={26} weight="duotone" className="text-cyan-400" />
@@ -231,7 +231,7 @@ export default function Ambitions({ state, onUpdate }: Props) {
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
           onClick={openAdd}
-          className="text-xs px-4 py-2 rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+          className="self-start sm:self-auto text-xs px-4 py-2 rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
         >
           <Plus size={14} weight="bold" />
           <span>New Ambition</span>
@@ -240,7 +240,7 @@ export default function Ambitions({ state, onUpdate }: Props) {
 
       {/* Add / Edit Form */}
       {showForm && (
-        <div className="rounded-2xl p-6 space-y-4" style={{ background: '#161b22', border: '1px solid #6366f1' }}>
+        <div className="rounded-2xl p-4 sm:p-6 space-y-4" style={{ background: '#161b22', border: '1px solid #6366f1' }}>
           <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: '#2d3748' }}>
             <h3 className="text-base font-semibold text-slate-100">
               {editingId ? 'Edit Goal Details' : 'Create New Ambition / Target'}
@@ -332,7 +332,7 @@ export default function Ambitions({ state, onUpdate }: Props) {
       )}
 
       {/* Filter tabs with icons */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar sm:flex-wrap">
         {[
           { id: 'all', label: 'All Ambitions' },
           { id: 'one-month', label: '1-Month Goals', icon: Target },
@@ -345,7 +345,7 @@ export default function Ambitions({ state, onUpdate }: Props) {
             <button
               key={item.id}
               onClick={() => setFilter(item.id as any)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex-shrink-0"
               style={{
                 background: isActive ? '#6366f1' : '#161b22',
                 color: isActive ? '#fff' : '#94a3b8',
@@ -373,7 +373,7 @@ export default function Ambitions({ state, onUpdate }: Props) {
           return (
             <div
               key={a.id}
-              className="rounded-2xl p-6 transition-all shadow-sm"
+              className="rounded-2xl p-4 sm:p-6 transition-all shadow-sm"
               style={{
                 background: '#161b22',
                 border: `1px solid ${isAchieved ? '#10b981' : isDropped ? '#2d3748' : '#334155'}`,
@@ -419,7 +419,7 @@ export default function Ambitions({ state, onUpdate }: Props) {
                     )}
                   </div>
 
-                  <div className="text-lg font-bold text-slate-100">{a.title}</div>
+                  <div className="text-base sm:text-lg font-bold text-slate-100">{a.title}</div>
                   {a.description && (
                     <div className="text-xs mt-1 text-slate-400 leading-relaxed">{a.description}</div>
                   )}
@@ -457,7 +457,7 @@ export default function Ambitions({ state, onUpdate }: Props) {
                         </div>
                         <button
                           onClick={() => removeAchievement(a.id, ach.id)}
-                          className="text-slate-500 hover:text-rose-400 text-xs px-1"
+                          className="text-slate-500 hover:text-rose-400 text-xs px-1 cursor-pointer"
                           title="Delete achievement"
                         >
                           ✕
@@ -473,7 +473,7 @@ export default function Ambitions({ state, onUpdate }: Props) {
 
                 {/* Add Achievement Text Input */}
                 {a.status === 'active' && (
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
                     <input
                       value={newAchievementText[a.id] || ''}
                       onChange={e =>
@@ -481,13 +481,13 @@ export default function Ambitions({ state, onUpdate }: Props) {
                       }
                       onKeyDown={e => e.key === 'Enter' && addAchievement(a.id)}
                       placeholder="Add milestone... (e.g. Read chapter 4, built auth module, solved 10 problems)"
-                      className="flex-1 rounded-xl px-3.5 py-2 text-xs outline-none"
+                      className="flex-1 rounded-xl px-3.5 py-2 text-xs outline-none min-w-0"
                       style={{ background: '#0d1117', border: '1px solid #2d3748', color: '#e2e8f0' }}
                     />
                     <button
                       onClick={() => addAchievement(a.id)}
                       disabled={!(newAchievementText[a.id] || '').trim()}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 transition-colors flex items-center gap-1"
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-1 cursor-pointer flex-shrink-0"
                     >
                       <span>+</span>
                       <span>Log Milestone</span>

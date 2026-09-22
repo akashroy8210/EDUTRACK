@@ -71,7 +71,7 @@ export default function Login({ onLogin }: LoginProps) {
           </div>
         </div>
 
-        <div className="rounded-2xl p-8" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+        <div className="rounded-2xl p-5 sm:p-8" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
           {/* Tab Switcher: Sign In vs Create Account */}
           <div className="flex rounded-xl p-1 mb-6" style={{ background: '#0d1117', border: '1px solid #2d3748' }}>
             <button

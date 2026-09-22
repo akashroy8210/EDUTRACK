@@ -201,46 +201,46 @@ export default function SocialMedia() {
       </div>
 
       {/* Quick Metrics */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl p-4" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
-          <div className="text-xs text-slate-400">Today's Screen Time</div>
-          <div className="text-2xl font-bold font-mono text-pink-400 mt-1">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
+        <div className="rounded-2xl p-3 sm:p-4" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+          <div className="text-[11px] sm:text-xs text-slate-400">Today's Screen Time</div>
+          <div className="text-xl sm:text-2xl font-bold font-mono text-pink-400 mt-1">
             {Math.floor(todayTotalMins / 60)}h {todayTotalMins % 60}m
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">{todayTotalMins} minutes total</div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">{todayTotalMins} mins total</div>
         </div>
 
-        <div className="rounded-2xl p-4" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
-          <div className="text-xs text-slate-400">Tracked Platforms</div>
-          <div className="text-2xl font-bold font-mono text-indigo-400 mt-1">
+        <div className="rounded-2xl p-3 sm:p-4" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+          <div className="text-[11px] sm:text-xs text-slate-400">Tracked Platforms</div>
+          <div className="text-xl sm:text-2xl font-bold font-mono text-indigo-400 mt-1">
             {platforms.length}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Active monitoring</div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">Active monitoring</div>
         </div>
 
-        <div className="rounded-2xl p-4" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
-          <div className="text-xs text-slate-400">History Lock Status</div>
-          <div className="text-sm font-bold font-mono text-emerald-400 mt-2 flex items-center gap-1.5">
-            <Lock size={16} weight="fill" />
+        <div className="rounded-2xl p-3 sm:p-4" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+          <div className="text-[11px] sm:text-xs text-slate-400">History Lock Status</div>
+          <div className="text-xs sm:text-sm font-bold font-mono text-emerald-400 mt-2 flex items-center gap-1 sm:gap-1.5">
+            <Lock size={15} weight="fill" />
             <span>Immutable</span>
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Past days locked</div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1">Past days locked</div>
         </div>
 
-        <div className="rounded-2xl p-4" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
-          <div className="text-xs text-slate-400">Today's Date</div>
-          <div className="text-sm font-bold font-mono text-amber-300 mt-2 flex items-center gap-1.5">
-            <CalendarCheck size={16} weight="duotone" />
-            <span>{today}</span>
+        <div className="rounded-2xl p-3 sm:p-4" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+          <div className="text-[11px] sm:text-xs text-slate-400">Today's Date</div>
+          <div className="text-xs sm:text-sm font-bold font-mono text-amber-300 mt-2 flex items-center gap-1 sm:gap-1.5">
+            <CalendarCheck size={15} weight="duotone" />
+            <span className="truncate">{today}</span>
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Active logging window</div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1">Active window</div>
         </div>
       </div>
 
       {/* Daily Usage Log Form & Weekly Chart */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Form */}
-        <div className="rounded-2xl p-5 space-y-4" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+        <div className="rounded-2xl p-4 sm:p-5 space-y-4" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
           <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: '#2d3748' }}>
             <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
               <Clock size={18} weight="duotone" className="text-pink-400" />
@@ -258,14 +258,14 @@ export default function SocialMedia() {
                 <button
                   key={p.id}
                   onClick={() => setSelectedPlatform(p.id)}
-                  className="px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer text-left"
+                  className="px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer text-left"
                   style={{
                     background: selectedPlatform === p.id ? `${p.color}25` : '#0d1117',
                     border: `1px solid ${selectedPlatform === p.id ? p.color : '#2d3748'}`,
                     color: selectedPlatform === p.id ? '#fff' : '#94a3b8',
                   }}
                 >
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: p.color }} />
+                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: p.color }} />
                   <span className="truncate">{p.name}</span>
                 </button>
               ))}
@@ -283,12 +283,12 @@ export default function SocialMedia() {
                 value={minutes}
                 onChange={e => setMinutes(e.target.value)}
                 placeholder="e.g. 45"
-                className="flex-1 rounded-xl px-4 py-2.5 text-xs outline-none text-slate-200 font-mono"
+                className="flex-1 rounded-xl px-3.5 py-2.5 text-xs outline-none text-slate-200 font-mono min-w-0"
                 style={{ background: '#0d1117', border: '1px solid #2d3748' }}
               />
               <button
                 onClick={handleLogUsage}
-                className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-pink-600 hover:bg-pink-500 text-white transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-4 sm:px-5 py-2.5 rounded-xl text-xs font-semibold bg-pink-600 hover:bg-pink-500 text-white transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0"
               >
                 <span>Save Usage</span>
               </button>
@@ -304,8 +304,8 @@ export default function SocialMedia() {
               <div className="space-y-2">
                 {todayRecords.map(r => (
                   <div key={r.id} className="flex items-center justify-between text-xs px-3.5 py-2 rounded-xl" style={{ background: '#0d1117', border: '1px solid #2d3748' }}>
-                    <span className="text-slate-200 font-medium">{r.platformName}</span>
-                    <span className="font-mono text-pink-400 font-bold">{r.minutesSpent} mins</span>
+                    <span className="text-slate-200 font-medium truncate mr-2">{r.platformName}</span>
+                    <span className="font-mono text-pink-400 font-bold flex-shrink-0">{r.minutesSpent} mins</span>
                   </div>
                 ))}
               </div>
@@ -314,7 +314,7 @@ export default function SocialMedia() {
         </div>
 
         {/* Weekly Chart */}
-        <div className="rounded-2xl p-5" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+        <div className="rounded-2xl p-4 sm:p-5" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
           <div className="flex items-center justify-between mb-4 border-b pb-3" style={{ borderColor: '#2d3748' }}>
             <div>
               <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
@@ -325,14 +325,14 @@ export default function SocialMedia() {
             </div>
           </div>
 
-          <div className="h-44 flex items-end justify-between gap-3 pt-4 px-2">
+          <div className="h-44 flex items-end justify-between gap-1.5 sm:gap-3 pt-4 px-1 sm:px-2">
             {last7Days.map(d => {
               const barHeight = Math.max(12, Math.round((d.totalMinutes / maxDaily) * 120));
               const isToday = d.date === today;
 
               return (
-                <div key={d.date} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                  <div className="text-[10px] font-mono font-bold text-slate-400">
+                <div key={d.date} className="flex-1 flex flex-col items-center gap-1.5 sm:gap-2 h-full justify-end min-w-0">
+                  <div className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-400 truncate">
                     {d.totalMinutes > 0 ? `${d.totalMinutes}m` : '0'}
                   </div>
                   <div
@@ -345,7 +345,7 @@ export default function SocialMedia() {
                       opacity: d.totalMinutes > 0 ? 1 : 0.2,
                     }}
                   />
-                  <div className={`text-[11px] font-mono ${isToday ? 'text-pink-400 font-bold' : 'text-slate-500'}`}>
+                  <div className={`text-[10px] sm:text-[11px] font-mono ${isToday ? 'text-pink-400 font-bold' : 'text-slate-500'}`}>
                     {d.day}
                   </div>
                 </div>
@@ -358,7 +358,7 @@ export default function SocialMedia() {
       {/* Add Platform Modal */}
       {showAddPlatform && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="rounded-2xl p-6 max-w-sm w-full shadow-2xl border" style={{ background: '#161b22', borderColor: '#2d3748' }}>
+          <div className="rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl border" style={{ background: '#161b22', borderColor: '#2d3748' }}>
             <h3 className="text-base font-semibold text-slate-100 mb-4">Add Tracked Platform</h3>
             <div className="space-y-3.5">
               <div>

@@ -80,6 +80,8 @@ export default function Schedule({
   const [activeTab, setActiveTab] = useState<'view' | 'edit'>('view');
   // Controls visibility of CSV import modal dialog
   const [showCsvModal, setShowCsvModal] = useState(false);
+  // Filter for specific weekday on mobile / tablet
+  const [selectedDayFilter, setSelectedDayFilter] = useState<string>('all');
 
   // Real-time current date (YYYY-MM-DD)
   const today = getTodayDate();
@@ -538,8 +540,34 @@ export default function Schedule({
 
       {/* TAB 1: WEEKLY TIMETABLE VIEW */}
       {activeTab === 'view' && (
-        <div className="space-y-6">
-          {DAYS.map(day => {
+        <div className="space-y-4 sm:space-y-6">
+          {/* Day Selector Chips for Mobile & Fast Filtering */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 select-none">
+            {['all', ...DAYS].map(d => {
+              const label = d === 'all' ? 'All Days' : d.slice(0, 3);
+              const isSelected = selectedDayFilter === d;
+              const isCurrentDay = d === todayDay;
+              return (
+                <button
+                  key={d}
+                  onClick={() => setSelectedDayFilter(d)}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                  style={{
+                    background: isSelected ? '#6366f1' : '#161b22',
+                    color: isSelected ? '#fff' : '#94a3b8',
+                    border: `1px solid ${isSelected ? '#6366f1' : '#2d3748'}`,
+                  }}
+                >
+                  <span>{label}</span>
+                  {isCurrentDay && d !== 'all' && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {(selectedDayFilter === 'all' ? DAYS : [selectedDayFilter]).map(day => {
             const isToday = day === todayDay;
             const classes = state.schedule.filter(c => c.day === day).sort((a, b) => a.time.localeCompare(b.time));
 
@@ -557,7 +585,7 @@ export default function Schedule({
               >
                 {/* Day Header */}
                 <div
-                  className="flex items-center justify-between px-6 py-3.5 border-b"
+                  className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-3.5 border-b"
                   style={{
                     background: isToday ? '#6366f112' : '#1c223050',
                     borderColor: '#2d3748',
@@ -603,7 +631,7 @@ export default function Schedule({
                       return (
                         <div
                           key={c.id}
-                          className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 px-6 py-4 transition-colors hover:bg-slate-800/30"
+                          className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 px-4 sm:px-6 py-3.5 sm:py-4 transition-colors hover:bg-slate-800/30"
                           style={{
                             opacity: classHoliday ? 0.5 : 1,
                           }}

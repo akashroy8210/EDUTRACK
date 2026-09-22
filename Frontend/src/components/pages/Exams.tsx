@@ -393,12 +393,12 @@ export default function Exams({ state, onUpdate }: Props) {
                 </div>
 
                 {/* Actions: Edit, Done, Delete */}
-                <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
+                <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end sm:justify-center pt-2 sm:pt-0 border-t sm:border-0 border-slate-800/60">
                   <button
                     onClick={() => openEdit(exam)}
-                    className="text-xs px-3 py-1.5 rounded-lg text-indigo-400 bg-indigo-500/10 border border-indigo-500/25 hover:bg-indigo-500/20 font-medium transition-colors"
+                    className="text-xs px-3 py-1.5 rounded-lg text-indigo-400 bg-indigo-500/10 border border-indigo-500/25 hover:bg-indigo-500/20 font-medium transition-colors cursor-pointer"
                   >
-                    ✏️ Edit
+                    Edit
                   </button>
 
                   <button
