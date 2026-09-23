@@ -16,6 +16,7 @@ const goalsRoutes = require('./features/goals/goals.routes');
 const blogRoutes = require('./features/blog/blog.routes');
 const examsRoutes = require('./features/exams/exams.routes');
 const dashboardRoutes = require('./features/dashboard/dashboard.routes');
+const codeforcesRoutes = require('./features/codeforces/codeforces.routes');
 
 const app = express();
 
@@ -69,6 +70,7 @@ app.use('/api/blogs', blogRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/exams', examsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/codeforces', codeforcesRoutes);
 
 // 404 Route Handler
 app.use((req, res) => {

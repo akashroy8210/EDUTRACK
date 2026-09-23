@@ -46,6 +46,8 @@ export interface ClassSession {
   startDate?: string;
   /** End date until which this session recurs weekly (YYYY-MM-DD) */
   endDate?: string;
+  /** Accent color for schedule representation */
+  color?: string;
 }
 
 /**
@@ -228,6 +230,68 @@ export interface UserProfile {
   section: string;
   /** Profile avatar image URL */
   photo: string;
+  /** Linked Codeforces competitive programming handle */
+  codeforcesHandle?: string;
+}
+
+/**
+ * Codeforces user profile metadata.
+ */
+export interface CodeforcesUser {
+  handle: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  country?: string;
+  city?: string;
+  organization?: string;
+  contribution: number;
+  rank: string;
+  rating: number;
+  maxRank: string;
+  maxRating: number;
+  lastOnlineTimeSeconds: number;
+  registrationTimeSeconds: number;
+  friendOfCount: number;
+  avatar: string;
+  titlePhoto: string;
+}
+
+/**
+ * Codeforces contest model.
+ */
+export interface CodeforcesContest {
+  id: number;
+  name: string;
+  type: string;
+  phase: 'BEFORE' | 'CODING' | 'PENDING_SYSTEM_TEST' | 'SYSTEM_TEST' | 'FINISHED' | string;
+  durationSeconds: number;
+  startTimeSeconds?: number;
+  relativeTimeSeconds?: number;
+  websiteUrl?: string;
+  difficulty?: number;
+}
+
+/**
+ * Codeforces rating change entry from contest participation.
+ */
+export interface CodeforcesRatingChange {
+  contestId: number;
+  contestName: string;
+  handle: string;
+  rank: number;
+  ratingUpdateTimeSeconds: number;
+  oldRating: number;
+  newRating: number;
+}
+
+/**
+ * Problem-solving summary statistics.
+ */
+export interface CodeforcesStatus {
+  totalSubmissions: number;
+  solvedCount: number;
+  topTags: { tag: string; count: number }[];
 }
 
 /**

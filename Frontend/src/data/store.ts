@@ -293,9 +293,9 @@ export function calculateCourseAttendanceMetrics({
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
     for (const session of scheduledClasses) {
-      // Real-time: session.startDate strictly defaults to todayDate (real time), with NO fallback to past dates
-      const start = (session.startDate && session.startDate !== '2026-09-01') ? session.startDate : todayDate;
-      const end = (session.endDate && session.endDate !== '2026-11-13') ? session.endDate : getRealTimeSemesterEndDate();
+      // Respect explicit session startDate and endDate dynamically
+      const start = session.startDate ? session.startDate : (validity?.startDate || todayDate);
+      const end = session.endDate ? session.endDate : (validity?.endDate || getRealTimeSemesterEndDate());
 
       const cur = new Date(start + 'T00:00:00');
       const endDateObj = new Date(end + 'T00:00:00');
@@ -363,3 +363,40 @@ export function calculateCourseAttendanceMetrics({
     needed75,
   };
 }
+
+/**
+ * Calculates the exact total number of classes scheduled for an individual class session
+ * across the recurring interval from startDate to endDate, excluding cancelled/holiday dates.
+ */
+export function calculateSessionTotalClasses(
+  session: { day?: string; startDate?: string; endDate?: string; id?: string },
+  holidays: Holiday[] = []
+): number {
+  if (!session.day) return 0;
+  const today = getTodayDate();
+  const start = session.startDate || today;
+  const end = session.endDate || getRealTimeSemesterEndDate();
+  const cur = new Date(start + 'T00:00:00');
+  const endObj = new Date(end + 'T00:00:00');
+  if (isNaN(cur.getTime()) || isNaN(endObj.getTime()) || cur > endObj) return 0;
+
+  let count = 0;
+  while (cur <= endObj) {
+    const dayName = cur.toLocaleDateString('en-US', { weekday: 'long' });
+    if (dayName.toLowerCase() === session.day.toLowerCase()) {
+      const y = cur.getFullYear();
+      const m = String(cur.getMonth() + 1).padStart(2, '0');
+      const d = String(cur.getDate()).padStart(2, '0');
+      const ds = `${y}-${m}-${d}`;
+      const isHoliday = holidays.some(
+        h => h.date === ds && (h.type === 'full-day' || (h.type as string) === 'full' || (h.type === 'class-specific' && h.classId === session.id))
+      );
+      if (!isHoliday) {
+        count++;
+      }
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+}
+

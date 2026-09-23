@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { AppState, Subject, Exam, BlogPost, TodoItem, HabitItem, Ambition, ClassSession, Holiday, UserProfile, AttendanceRecord } from '@/data/types';
-import { loadState, saveState, getTodayDate, DEFAULT_STATE } from '@/data/store';
+import { loadState, saveState, getTodayDate, DEFAULT_STATE, calculateSessionTotalClasses } from '@/data/store';
 import {
   authApi,
   profileApi,
@@ -24,6 +24,7 @@ import Habits from './pages/Habits';
 import Ambitions from './pages/Ambitions';
 import Profile from './pages/Profile';
 import SocialMedia from './pages/SocialMedia';
+import Codeforces from './pages/Codeforces';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   SquaresFour,
@@ -39,6 +40,7 @@ import {
   UserCircle,
   SignOut,
   X,
+  Trophy,
 } from '@phosphor-icons/react';
 
 type Page =
@@ -49,6 +51,7 @@ type Page =
   | 'blog'
   | 'todo'
   | 'habits'
+  | 'codeforces'
   | 'socialMedia'
   | 'ambitions'
   | 'profile';
@@ -379,7 +382,19 @@ export default function Dashboard() {
     schedule: (
       <Schedule
         state={state}
-        onUpdateSchedule={(schedule: ClassSession[]) => update({ schedule })}
+        onUpdateSchedule={(schedule: ClassSession[]) => {
+          const updatedSubjects = state.subjects.map(subj => {
+            const scheduledClasses = schedule.filter(
+              c => c.subjectId === subj.id || c.subjectName.toLowerCase() === subj.name.toLowerCase()
+            );
+            const total = scheduledClasses.reduce(
+              (acc, c) => acc + calculateSessionTotalClasses(c, state.holidays),
+              0
+            );
+            return total > 0 ? { ...subj, totalClasses: total } : subj;
+          });
+          update({ schedule, subjects: updatedSubjects });
+        }}
         onUpdateHolidays={(holidays: Holiday[]) => update({ holidays })}
         onUpdateValidity={(scheduleValidity) => update({ scheduleValidity })}
       />
@@ -390,6 +405,13 @@ export default function Dashboard() {
     socialMedia: <SocialMedia />,
     ambitions: <Ambitions state={state} onUpdate={(ambitions: Ambition[]) => update({ ambitions })} />,
     blog: <Blog state={state} onUpdate={(blogs: BlogPost[]) => update({ blogs })} />,
+    codeforces: (
+      <Codeforces
+        state={state}
+        onUpdateUser={(user: UserProfile) => update({ user })}
+        onNavigateToProfile={() => setPage('profile')}
+      />
+    ),
     profile: <Profile state={state} onUpdate={(user: UserProfile) => update({ user })} />,
   };
   const isProfileIncomplete = !state.user.rollNo || !state.user.branch || !state.user.semester;
@@ -565,6 +587,7 @@ export default function Dashboard() {
                 {[
                   { page: 'habits' as Page, label: 'Daily Habits', icon: Fire, color: '#f59e0b' },
                   { page: 'exams' as Page, label: 'Exams & Quizzes', icon: GraduationCap, color: '#6366f1' },
+                  { page: 'codeforces' as Page, label: 'Codeforces CP', icon: Trophy, color: '#f59e0b' },
                   { page: 'socialMedia' as Page, label: 'Social Detox', icon: Globe, color: '#10b981' },
                   { page: 'ambitions' as Page, label: 'Ambitions & Goals', icon: Target, color: '#ec4899' },
                   { page: 'blog' as Page, label: 'Daily Notes & Blog', icon: Notebook, color: '#06b6d4' },

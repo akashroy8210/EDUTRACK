@@ -35,6 +35,10 @@ const blogSchema = new mongoose.Schema(
         trim: true,
       },
     ],
+    category: {
+      type: String,
+      default: 'Campus Life',
+    },
     mood: {
       type: String,
       default: 'focused',

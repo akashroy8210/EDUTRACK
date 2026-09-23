@@ -4,7 +4,7 @@ import { getTodayDate } from '@/data/store';
 import HabitsBarChart from '@/components/charts/HabitsBarChart';
 import { commonWorksApi } from '@/api/client';
 import { toast } from 'sonner';
-import { Fire, Plus, Trash, CheckCircle, Calendar, Sparkle, PencilSimple, Lock } from '@phosphor-icons/react';
+import { Fire, Plus, Trash, CheckCircle, Calendar, Sparkle, PencilSimple, Lock, CircleNotch } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 
 interface Props {
@@ -20,12 +20,14 @@ export default function Habits({ state, onUpdate }: Props) {
   const [newText, setNewText] = useState('');
   const [newIcon, setNewIcon] = useState('🎯');
   const [newColor, setNewColor] = useState('#6366f1');
+  const [isAddingHabit, setIsAddingHabit] = useState(false);
 
   // Edit Habit state (respects 7-day cooldown rule)
   const [editingHabit, setEditingHabit] = useState<HabitItem | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editIcon, setEditIcon] = useState('🎯');
   const [editColor, setEditColor] = useState('#6366f1');
+  const [isSavingEditHabit, setIsSavingEditHabit] = useState(false);
 
   const today = getTodayDate();
 
@@ -41,7 +43,8 @@ export default function Habits({ state, onUpdate }: Props) {
   };
 
   const saveEditHabit = async () => {
-    if (!editingHabit || !editTitle.trim()) return;
+    if (isSavingEditHabit || !editingHabit || !editTitle.trim()) return;
+    setIsSavingEditHabit(true);
     try {
       await commonWorksApi.update(editingHabit.id, {
         title: editTitle.trim(),
@@ -66,6 +69,8 @@ export default function Habits({ state, onUpdate }: Props) {
       setEditingHabit(null);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to update habit.');
+    } finally {
+      setIsSavingEditHabit(false);
     }
   };
 
@@ -91,37 +96,42 @@ export default function Habits({ state, onUpdate }: Props) {
   };
 
   const addHabit = async () => {
-    if (!newText.trim()) return;
+    if (isAddingHabit || !newText.trim()) return;
+    setIsAddingHabit(true);
     try {
-      const res = await commonWorksApi.create({
-        title: newText.trim(),
-        icon: newIcon,
-        color: newColor,
-      });
-      const created = res.habit || res;
-      const h: HabitItem = {
-        id: created._id || created.id || `h${Date.now()}`,
-        text: created.title || newText.trim(),
-        icon: created.icon || newIcon,
-        color: created.color || newColor,
-        completionHistory: { [today]: false }
-      };
-      onUpdate([...state.habits, h]);
-    } catch {
-      const h: HabitItem = {
-        id: `h${Date.now()}`,
-        text: newText.trim(),
-        icon: newIcon,
-        color: newColor,
-        completionHistory: { [today]: false }
-      };
-      onUpdate([...state.habits, h]);
+      try {
+        const res = await commonWorksApi.create({
+          title: newText.trim(),
+          icon: newIcon,
+          color: newColor,
+        });
+        const created = res.habit || res;
+        const h: HabitItem = {
+          id: created._id || created.id || `h${Date.now()}`,
+          text: created.title || newText.trim(),
+          icon: created.icon || newIcon,
+          color: created.color || newColor,
+          completionHistory: { [today]: false }
+        };
+        onUpdate([...state.habits, h]);
+      } catch {
+        const h: HabitItem = {
+          id: `h${Date.now()}`,
+          text: newText.trim(),
+          icon: newIcon,
+          color: newColor,
+          completionHistory: { [today]: false }
+        };
+        onUpdate([...state.habits, h]);
+      }
+      toast.success(`Added new daily habit: "${newText.trim()}"`);
+      setNewText('');
+      setNewIcon('🎯');
+      setNewColor('#6366f1');
+      setShowAdd(false);
+    } finally {
+      setIsAddingHabit(false);
     }
-    toast.success(`Added new daily habit: "${newText.trim()}"`);
-    setNewText('');
-    setNewIcon('🎯');
-    setNewColor('#6366f1');
-    setShowAdd(false);
   };
 
   const removeHabit = async (id: string) => {
@@ -277,8 +287,13 @@ export default function Habits({ state, onUpdate }: Props) {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={addHabit} className="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white">
-              Add Habit
+            <button
+              onClick={addHabit}
+              disabled={isAddingHabit || !newText.trim()}
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+            >
+              {isAddingHabit && <CircleNotch size={14} weight="bold" className="animate-spin" />}
+              <span>{isAddingHabit ? 'Adding...' : 'Add Habit'}</span>
             </button>
             <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-lg text-xs bg-slate-700 text-slate-300">
               Cancel
@@ -562,9 +577,11 @@ export default function Habits({ state, onUpdate }: Props) {
               <button
                 type="button"
                 onClick={saveEditHabit}
-                className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition-colors shadow"
+                disabled={isSavingEditHabit || !editTitle.trim()}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition-colors shadow disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
-                Save Changes
+                {isSavingEditHabit && <CircleNotch size={14} weight="bold" className="animate-spin" />}
+                <span>{isSavingEditHabit ? 'Saving...' : 'Save Changes'}</span>
               </button>
               <button
                 type="button"

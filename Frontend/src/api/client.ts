@@ -185,3 +185,62 @@ export const examsApi = {
 export const dashboardApi = {
   getSummary: () => api.get<any>('/dashboard/summary'),
 };
+
+// Codeforces API (Proxy with direct public API fallback)
+export const codeforcesApi = {
+  getUser: async (handle: string): Promise<{ user: any }> => {
+    try {
+      return await api.get<{ success: boolean; user: any }>(`/codeforces/user/${encodeURIComponent(handle)}`);
+    } catch {
+      const res = await fetch(`https://codeforces.com/api/user.info?handles=${encodeURIComponent(handle)}`);
+      const data = await res.json();
+      if (data.status === 'OK' && data.result?.[0]) {
+        return { user: data.result[0] };
+      }
+      throw new Error(data.comment || 'Codeforces user not found');
+    }
+  },
+  getContests: async (): Promise<{ contests: any[] }> => {
+    try {
+      return await api.get<{ success: boolean; contests: any[] }>('/codeforces/contests');
+    } catch {
+      const res = await fetch('https://codeforces.com/api/contest.list?gym=false');
+      const data = await res.json();
+      if (data.status === 'OK' && Array.isArray(data.result)) {
+        const relevant = data.result
+          .filter((c: any) => c.phase === 'BEFORE' || c.phase === 'CODING')
+          .sort((a: any, b: any) => (a.startTimeSeconds || 0) - (b.startTimeSeconds || 0));
+        return { contests: relevant };
+      }
+      return { contests: [] };
+    }
+  },
+  getRatingHistory: async (handle: string): Promise<{ ratingHistory: any[] }> => {
+    try {
+      return await api.get<{ success: boolean; ratingHistory: any[] }>(`/codeforces/rating/${encodeURIComponent(handle)}`);
+    } catch {
+      const res = await fetch(`https://codeforces.com/api/user.rating?handle=${encodeURIComponent(handle)}`);
+      const data = await res.json();
+      if (data.status === 'OK') return { ratingHistory: data.result || [] };
+      return { ratingHistory: [] };
+    }
+  },
+  getUserStatus: async (handle: string): Promise<{ status: any }> => {
+    try {
+      return await api.get<{ success: boolean; status: any }>(`/codeforces/status/${encodeURIComponent(handle)}`);
+    } catch {
+      const res = await fetch(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}&from=1&count=1000`);
+      const data = await res.json();
+      if (data.status === 'OK' && Array.isArray(data.result)) {
+        const solved = new Set();
+        data.result.forEach((s: any) => {
+          if (s.verdict === 'OK' && s.problem) {
+            solved.add(`${s.problem.contestId}-${s.problem.index}`);
+          }
+        });
+        return { status: { totalSubmissions: data.result.length, solvedCount: solved.size, topTags: [] } };
+      }
+      return { status: { totalSubmissions: 0, solvedCount: 0, topTags: [] } };
+    }
+  },
+};

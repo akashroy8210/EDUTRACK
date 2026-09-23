@@ -53,6 +53,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: 'Asia/Kolkata',
     },
+    codeforcesHandle: {
+      type: String,
+      default: '',
+      trim: true,
+    },
   },
   { timestamps: true }
 );

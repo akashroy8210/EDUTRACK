@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { UserProfile } from '@/data/types';
 import { authApi } from '@/api/client';
 import { toast } from 'sonner';
+import { CircleNotch } from '@phosphor-icons/react';
 
 interface LoginProps {
   onLogin: (userData?: Partial<UserProfile>, isNewRegistration?: boolean) => void;
@@ -183,12 +184,13 @@ export default function Login({ onLogin }: LoginProps) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 rounded-lg font-semibold text-xs transition-all mt-2 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 rounded-lg font-semibold text-xs transition-all mt-2 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
               style={{ background: '#6366f1', color: '#fff' }}
               onMouseEnter={e => !isSubmitting && ((e.target as HTMLElement).style.background = '#4f46e5')}
               onMouseLeave={e => !isSubmitting && ((e.target as HTMLElement).style.background = '#6366f1')}
             >
-              {isSubmitting ? 'Authenticating...' : (mode === 'login' ? 'Sign In' : 'Create Account & Continue')}
+              {isSubmitting && <CircleNotch size={14} weight="bold" className="animate-spin" />}
+              <span>{isSubmitting ? 'Authenticating...' : (mode === 'login' ? 'Sign In' : 'Create Account & Continue')}</span>
             </button>
           </form>
 

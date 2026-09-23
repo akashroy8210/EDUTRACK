@@ -41,6 +41,7 @@ function sanitizeUser(user) {
     photo: user.photo,
     isProfileComplete: user.isProfileComplete,
     timezone: user.timezone,
+    codeforcesHandle: user.codeforcesHandle || '',
     createdAt: user.createdAt,
   };
 }

@@ -295,6 +295,13 @@ async function addClassSession(userId, data) {
   const startDate = data.startDate || today;
   const endDate = data.endDate || addDays(startDate, 84);
 
+  const SCHEDULE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'];
+  let color = data.color;
+  if (!color) {
+    const existingCount = await ClassSession.countDocuments({ userId, day: data.day });
+    color = SCHEDULE_COLORS[existingCount % SCHEDULE_COLORS.length];
+  }
+
   return await ClassSession.create({
     userId,
     subjectId: resolvedSubjectId,
@@ -306,6 +313,7 @@ async function addClassSession(userId, data) {
     type: data.type || 'lecture',
     startDate,
     endDate,
+    color,
   });
 }
 
@@ -469,6 +477,7 @@ async function updateClassSession(userId, id, data) {
   if (data.type) session.type = data.type;
   if (data.startDate) session.startDate = data.startDate;
   if (data.endDate) session.endDate = data.endDate;
+  if (data.color) session.color = data.color;
 
   await session.save();
   return session;

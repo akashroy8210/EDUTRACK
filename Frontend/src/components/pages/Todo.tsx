@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { AppState, TodoItem } from '@/data/types';
 import TodoBarChart from '@/components/charts/TodoBarChart';
 import { dailyWorksApi } from '@/api/client';
@@ -16,6 +16,8 @@ import {
   Flag,
   Clock,
   WarningCircle,
+  ChartBar,
+  CircleNotch,
 } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -30,11 +32,16 @@ const PRIORITY_META = {
   low: { label: 'Low', color: '#10b981', bg: '#10b98118', border: '#10b98140', icon: Flag },
 };
 
+const priorityOrder: Record<string, number> = { high: 1, medium: 2, low: 3 };
+
 export default function Todo({ state, onUpdate }: Props) {
   const [newText, setNewText] = useState('');
   const [newPriority, setNewPriority] = useState<'high' | 'medium' | 'low'>('high');
   const [filter, setFilter] = useState<'all' | 'high' | 'daily' | 'permanent'>('all');
   const [confirmTask, setConfirmTask] = useState<TodoItem | null>(null);
+
+  const [showStats, setShowStats] = useState(false);
+  const statsRef = useRef<HTMLDivElement>(null);
 
   // Edit Task State
   const [editingTodo, setEditingTodo] = useState<TodoItem | null>(null);
@@ -42,29 +49,27 @@ export default function Todo({ state, onUpdate }: Props) {
   const [editPriority, setEditPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [editType, setEditType] = useState<'daily' | 'permanent'>('daily');
 
+  // Loading states to stop multiple parallel requests
+  const [isAddingTodo, setIsAddingTodo] = useState(false);
+  const [isSavingEditTodo, setIsSavingEditTodo] = useState(false);
+
   const today = new Date().toISOString().split('T')[0];
 
-  const priorityOrder = { high: 0, medium: 1, low: 2 };
-
-  // Filter and sort by priority (high first)
+  // Filter and show newest added tasks at the top
   const filtered = state.todos.filter(t => {
     if (filter === 'all') return true;
     if (filter === 'high') return (t.priority || 'medium') === 'high';
     return t.type === filter;
   });
 
-  const pending = filtered
-    .filter(t => !t.completed)
-    .sort((a, b) => {
-      const pa = priorityOrder[a.priority || 'medium'];
-      const pb = priorityOrder[b.priority || 'medium'];
-      return pa - pb;
-    });
+  // Pending tasks - keep newly added task at the top
+  const pending = filtered.filter(t => !t.completed);
 
   const completed = filtered.filter(t => t.completed);
 
   const add = async () => {
-    if (!newText.trim()) return;
+    if (!newText.trim() || isAddingTodo) return;
+    setIsAddingTodo(true);
     try {
       const res = await dailyWorksApi.create({
         title: newText.trim(),
@@ -95,6 +100,8 @@ export default function Todo({ state, onUpdate }: Props) {
       onUpdate([item, ...state.todos]);
       setNewText('');
       toast.success(`Added task: "${item.text}"`);
+    } finally {
+      setIsAddingTodo(false);
     }
   };
 
@@ -104,15 +111,15 @@ export default function Todo({ state, onUpdate }: Props) {
     const willBeDone = !todo.completed;
     try {
       await dailyWorksApi.toggle(id, true);
-    } catch {}
+    } catch { }
     onUpdate(
       state.todos.map(t =>
         t.id === id
           ? {
-              ...t,
-              completed: willBeDone,
-              completedAt: willBeDone ? today : undefined,
-            }
+            ...t,
+            completed: willBeDone,
+            completedAt: willBeDone ? today : undefined,
+          }
           : t
       )
     );
@@ -152,7 +159,7 @@ export default function Todo({ state, onUpdate }: Props) {
     const next = nextPriority[current];
     try {
       await dailyWorksApi.updatePriority(id, next);
-    } catch {}
+    } catch { }
     onUpdate(state.todos.map(t => (t.id === id ? { ...t, priority: next } : t)));
     toast.info(`Priority updated to ${next.toUpperCase()}`);
   };
@@ -165,8 +172,9 @@ export default function Todo({ state, onUpdate }: Props) {
   };
 
   const saveEditTodo = async () => {
-    if (!editingTodo || !editTitle.trim()) return;
+    if (!editingTodo || !editTitle.trim() || isSavingEditTodo) return;
     const newTitle = editTitle.trim();
+    setIsSavingEditTodo(true);
     try {
       await dailyWorksApi.update(editingTodo.id, {
         title: newTitle,
@@ -175,16 +183,18 @@ export default function Todo({ state, onUpdate }: Props) {
       });
     } catch (err: any) {
       console.error('Failed to update task on backend:', err);
+    } finally {
+      setIsSavingEditTodo(false);
     }
     onUpdate(
       state.todos.map(t =>
         t.id === editingTodo.id
           ? {
-              ...t,
-              text: newTitle,
-              priority: editPriority,
-              type: editType,
-            }
+            ...t,
+            text: newTitle,
+            priority: editPriority,
+            type: editType,
+          }
           : t
       )
     );
@@ -196,7 +206,7 @@ export default function Todo({ state, onUpdate }: Props) {
     const todo = state.todos.find(t => t.id === id);
     try {
       await dailyWorksApi.delete(id);
-    } catch {}
+    } catch { }
     onUpdate(state.todos.filter(t => t.id !== id));
     toast.info(`Deleted task "${todo?.text || ''}"`);
   };
@@ -204,7 +214,7 @@ export default function Todo({ state, onUpdate }: Props) {
   const resetDaily = async () => {
     try {
       await dailyWorksApi.resetDaily();
-    } catch {}
+    } catch { }
     onUpdate(state.todos.map(t => (t.type === 'daily' ? { ...t, completed: false, completedAt: undefined } : t)));
     toast.success('Reset all daily tasks for today');
   };
@@ -228,9 +238,9 @@ export default function Todo({ state, onUpdate }: Props) {
   const highPriorityCount = state.todos.filter(t => !t.completed && (t.priority || 'medium') === 'high').length;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 pb-36 md:pb-28">
+      {/* Header with Top-Right Action Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2.5" style={{ color: '#e2e8f0' }}>
             <CheckSquareOffset size={26} weight="duotone" className="text-indigo-400" />
@@ -241,96 +251,40 @@ export default function Todo({ state, onUpdate }: Props) {
           </p>
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.96 }}
-          onClick={resetDaily}
-          className="flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl font-semibold transition-all cursor-pointer"
-          style={{ background: '#f59e0b15', color: '#fbbf24', border: '1px solid #f59e0b35' }}
-        >
-          <motion.span whileHover={{ rotate: 180 }} transition={{ duration: 0.4 }}>
-            <ArrowsClockwise size={14} weight="bold" />
-          </motion.span>
-          <span>Reset Daily</span>
-        </motion.button>
-      </div>
-
-      {/* Stats + graph */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-2xl p-4 sm:p-6" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <div className="text-base font-semibold" style={{ color: '#e2e8f0' }}>
-                Daily Completion — Last 7 Days
-              </div>
-              <div className="text-xs text-slate-400">Total work tasks completed per day</div>
-            </div>
-            {highPriorityCount > 0 && (
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center gap-1.5">
-                <Fire size={14} weight="fill" className="text-rose-400" />
-                <span>{highPriorityCount} High Priority Pending</span>
-              </span>
-            )}
-          </div>
-          <TodoBarChart data={weekData} />
-        </div>
-
-        <div className="space-y-4">
-          <div className="rounded-2xl p-5" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
-            <div className="text-xs font-semibold text-slate-400 mb-1">Today's Progress</div>
-            <div className="text-2xl font-bold font-mono text-emerald-400">
-              {state.todos.filter(t => t.completed && t.completedAt === today).length}/
-              {state.todos.filter(t => t.type === 'daily').length}
-            </div>
-            <div className="text-xs text-slate-400 mt-1">daily tasks completed</div>
-          </div>
-
-          <div className="rounded-2xl p-5" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
-            <div className="text-xs font-semibold text-slate-400 mb-1">Habits (Permanent)</div>
-            <div className="text-2xl font-bold font-mono text-indigo-400">
-              {permanentDone}/{permanentTotal}
-            </div>
-            <div className="text-xs text-slate-400 mt-1">regular habits checked</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Add new task with priority selection */}
-      <div className="rounded-2xl p-4 sm:p-5" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
-        <div className="flex flex-col sm:flex-row gap-2.5">
-          <input
-            value={newText}
-            onChange={e => setNewText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && add()}
-            placeholder="Add new task or study assignment..."
-            className="flex-1 rounded-xl px-4 py-2.5 text-xs outline-none"
-            style={{ background: '#0d1117', border: '1px solid #2d3748', color: '#e2e8f0' }}
-          />
-
-          {/* Priority selector */}
-          <select
-            value={newPriority}
-            onChange={e => setNewPriority(e.target.value as any)}
-            className="rounded-xl px-3 py-2.5 text-xs outline-none font-semibold cursor-pointer"
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* Top-Right Button to open Progress Details & Graph at Bottom */}
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => {
+              const next = !showStats;
+              setShowStats(next);
+              if (next) {
+                setTimeout(() => statsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+              }
+            }}
+            className="flex items-center gap-1.5 text-xs px-3.5 py-2 rounded-xl font-semibold transition-all cursor-pointer shadow-xs"
             style={{
-              background: '#0d1117',
-              border: `1px solid ${PRIORITY_META[newPriority].border}`,
-              color: PRIORITY_META[newPriority].color,
+              background: showStats ? '#6366f1' : '#6366f115',
+              color: showStats ? '#ffffff' : '#a5b4fc',
+              border: `1px solid ${showStats ? '#6366f1' : '#6366f140'}`,
             }}
           >
-            <option value="high">🔥 High Priority</option>
-            <option value="medium">⚡ Medium Priority</option>
-            <option value="low">🟢 Low Priority</option>
-          </select>
+            <ChartBar size={15} weight="bold" />
+            <span>{showStats ? 'Hide Progress & Graph' : 'Progress & Graph'}</span>
+          </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={add}
-            className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={resetDaily}
+            className="flex items-center gap-1.5 text-xs px-3.5 py-2 rounded-xl font-semibold transition-all cursor-pointer shadow-xs"
+            style={{ background: '#f59e0b15', color: '#fbbf24', border: '1px solid #f59e0b35' }}
           >
-            <Plus size={14} weight="bold" />
-            <span>Add Task</span>
+            <motion.span whileHover={{ rotate: 180 }} transition={{ duration: 0.4 }}>
+              <ArrowsClockwise size={14} weight="bold" />
+            </motion.span>
+            <span>Reset Daily</span>
           </motion.button>
         </div>
       </div>
@@ -361,11 +315,17 @@ export default function Todo({ state, onUpdate }: Props) {
         ))}
       </div>
 
-      {/* Pending tasks (Sorted with High Priority First) */}
+      {/* Pending tasks (Newest Added Show From Top) */}
       {pending.length > 0 && (
         <div className="space-y-2.5">
-          <div className="text-xs font-semibold uppercase tracking-wider px-1 text-slate-400">
-            Pending Tasks ({pending.length}) — Sorted by Priority
+          <div className="text-xs font-semibold uppercase tracking-wider px-1 text-slate-400 flex items-center justify-between">
+            <span>Pending Tasks ({pending.length}) — Newest on Top</span>
+            {highPriorityCount > 0 && (
+              <span className="text-[11px] font-semibold text-rose-400 flex items-center gap-1">
+                <Fire size={13} weight="fill" />
+                <span>{highPriorityCount} High Priority</span>
+              </span>
+            )}
           </div>
           {pending.map(t => {
             const priority = t.priority || 'medium';
@@ -376,7 +336,7 @@ export default function Todo({ state, onUpdate }: Props) {
               <motion.div
                 key={t.id}
                 layout
-                className="flex items-center gap-2.5 sm:gap-3.5 rounded-2xl px-3.5 sm:px-5 py-3 sm:py-3.5 group transition-all hover:border-slate-600 shadow-sm"
+                className="flex items-start sm:items-center gap-2.5 sm:gap-3.5 rounded-2xl px-3.5 sm:px-5 py-3 sm:py-3.5 group transition-all hover:border-slate-600 shadow-sm"
                 style={{
                   background: '#161b22',
                   border: `1px solid ${priority === 'high' ? 'rgba(239, 68, 68, 0.35)' : '#2d3748'}`,
@@ -385,49 +345,54 @@ export default function Todo({ state, onUpdate }: Props) {
                 {/* Completion Checkbox */}
                 <button
                   onClick={() => toggle(t.id)}
-                  className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all cursor-pointer text-slate-500 hover:text-indigo-400"
+                  className="w-5 h-5 mt-0.5 sm:mt-0 rounded-md flex items-center justify-center flex-shrink-0 transition-all cursor-pointer text-slate-500 hover:text-indigo-400"
                 >
                   <Circle size={18} weight="bold" />
                 </button>
 
-                {/* Priority Chip (Clickable to cycle priority) */}
-                <button
-                  onClick={() => cyclePriority(t.id, priority)}
-                  title="Click to cycle priority: High → Medium → Low"
-                  className="text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition-all hover:opacity-80 flex-shrink-0"
-                  style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}
-                >
-                  <PriorityIcon size={12} weight="fill" />
-                  <span>{meta.label}</span>
-                </button>
 
-                <span className="flex-1 text-sm font-medium text-slate-200 truncate">{t.text}</span>
 
-                <span
-                  className="text-[11px] px-2 py-0.5 rounded-md font-mono flex-shrink-0"
-                  style={{
-                    background: t.type === 'permanent' ? '#06b6d418' : '#6366f118',
-                    color: t.type === 'permanent' ? '#22d3ee' : '#a5b4fc',
-                  }}
-                >
-                  {t.type}
+                {/* Task text with multiline wrapping (no truncate) for complete mobile visibility */}
+                <span className="flex-1 text-sm font-medium text-slate-200 break-words whitespace-normal leading-relaxed">
+                  {t.text}
                 </span>
 
-                <div className="flex items-center gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  <button
-                    onClick={() => startEditTodo(t)}
-                    title="Edit task"
-                    className="text-xs text-slate-400 hover:text-indigo-400 p-1 cursor-pointer transition-colors"
+                <div className='flex sm:flex-row flex-col gap-2'>
+                  <span
+                    className="text-[11px] px-2 py-0.5 rounded-md font-mono flex-shrink-0 self-start sm:self-center"
+                    style={{
+                      background: t.type === 'permanent' ? '#06b6d418' : '#6366f118',
+                      color: t.type === 'permanent' ? '#22d3ee' : '#a5b4fc',
+                    }}
                   >
-                    <PencilSimple size={15} />
-                  </button>
+                    {t.type}
+                  </span>
+                  {/* Priority Chip (Clickable to cycle priority) */}
                   <button
-                    onClick={() => remove(t.id)}
-                    title="Delete task"
-                    className="text-xs text-rose-400 hover:text-rose-300 p-1 cursor-pointer transition-colors"
+                    onClick={() => cyclePriority(t.id, priority)}
+                    title="Click to cycle priority: High → Medium → Low"
+                    className="text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition-all hover:opacity-80 flex-shrink-0 mt-0.5 sm:mt-0"
+                    style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}
                   >
-                    <Trash size={15} />
+                    <PriorityIcon size={12} weight="fill" />
+                    <span>{meta.label}</span>
                   </button>
+                  <div className="flex items-center gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0 self-start sm:self-center">
+                    <button
+                      onClick={() => startEditTodo(t)}
+                      title="Edit task"
+                      className="text-xs text-slate-400 hover:text-indigo-400 p-1 cursor-pointer transition-colors"
+                    >
+                      <PencilSimple size={15} />
+                    </button>
+                    <button
+                      onClick={() => remove(t.id)}
+                      title="Delete task"
+                      className="text-xs text-rose-400 hover:text-rose-300 p-1 cursor-pointer transition-colors"
+                    >
+                      <Trash size={15} />
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             );
@@ -444,26 +409,29 @@ export default function Todo({ state, onUpdate }: Props) {
           {completed.map(t => (
             <div
               key={t.id}
-              className="flex items-center gap-2.5 sm:gap-3.5 rounded-2xl px-3.5 sm:px-5 py-3 transition-opacity opacity-75 hover:opacity-100 group"
+              className="flex items-start sm:items-center gap-2.5 sm:gap-3.5 rounded-2xl px-3.5 sm:px-5 py-3 transition-opacity opacity-75 hover:opacity-100 group"
               style={{ background: '#161b22', border: '1px solid #2d3748' }}
             >
               <button
                 onClick={() => toggle(t.id)}
-                className="w-5 h-5 flex items-center justify-center flex-shrink-0 text-emerald-400 cursor-pointer"
+                className="w-5 h-5 mt-0.5 sm:mt-0 flex items-center justify-center flex-shrink-0 text-emerald-400 cursor-pointer"
               >
                 <CheckCircle size={18} weight="fill" />
               </button>
-              <span className="flex-1 text-sm text-slate-400 line-through truncate">{t.text}</span>
+              {/* Completed text with multiline wrapping (no truncate) for complete mobile visibility */}
+              <span className="flex-1 text-sm text-slate-400 line-through break-words whitespace-normal leading-relaxed">
+                {t.text}
+              </span>
 
               {/* Display completedAt date/time */}
               {t.completedAt && (
-                <span className="text-[11px] px-2.5 py-0.5 rounded-md font-mono text-slate-400 bg-slate-900/90 border border-slate-700/60 flex items-center gap-1.5 flex-shrink-0">
+                <span className="text-[11px] px-2.5 py-0.5 rounded-md font-mono text-slate-400 bg-slate-900/90 border border-slate-700/60 flex items-center gap-1.5 flex-shrink-0 self-start sm:self-center">
                   <Clock size={12} weight="regular" className="text-slate-400" />
                   <span>{t.completedAt}</span>
                 </span>
               )}
 
-              <div className="flex items-center gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
+              <div className="flex items-center gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0 self-start sm:self-center">
                 <button
                   onClick={() => startEditTodo(t)}
                   title="Edit task"
@@ -483,6 +451,130 @@ export default function Todo({ state, onUpdate }: Props) {
           ))}
         </div>
       )}
+
+      {/* Progress Details & 7-Day Completion Graph */}
+      <AnimatePresence>
+        {showStats && (
+          <motion.div
+            ref={statsRef}
+            initial={{ opacity: 0, height: 0, y: 20 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden pt-4"
+          >
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="lg:col-span-2 rounded-2xl p-4 sm:p-6" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-base font-semibold" style={{ color: '#e2e8f0' }}>
+                      Daily Completion — Last 7 Days
+                    </div>
+                    <div className="text-xs text-slate-400">Total work tasks completed per day</div>
+                  </div>
+                  {highPriorityCount > 0 && (
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center gap-1.5">
+                      <Fire size={14} weight="fill" className="text-rose-400" />
+                      <span>{highPriorityCount} High Priority Pending</span>
+                    </span>
+                  )}
+                </div>
+                <TodoBarChart data={weekData} />
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-2xl p-5" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+                  <div className="text-xs font-semibold text-slate-400 mb-1">Today's Progress</div>
+                  <div className="text-2xl font-bold font-mono text-emerald-400">
+                    {state.todos.filter(t => t.completed && t.completedAt === today).length}/
+                    {state.todos.filter(t => t.type === 'daily').length}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">daily tasks completed</div>
+                </div>
+
+                <div className="rounded-2xl p-5" style={{ background: '#161b22', border: '1px solid #2d3748' }}>
+                  <div className="text-xs font-semibold text-slate-400 mb-1">Habits (Permanent)</div>
+                  <div className="text-2xl font-bold font-mono text-indigo-400">
+                    {permanentDone}/{permanentTotal}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">regular habits checked</div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Add Task Input Box at the Absolute / Fixed Bottom */}
+      <div className="fixed bottom-14 md:bottom-4 left-0 md:left-56 right-0 z-30 px-3 sm:px-6 pointer-events-none">
+        <div className="max-w-4xl mx-auto pointer-events-auto">
+          <div
+            className="rounded-2xl p-2.5 sm:p-3.5 backdrop-blur-xl shadow-2xl transition-all"
+            style={{
+              background: 'rgba(22, 27, 34, 0.96)',
+              border: '1px solid rgba(99, 102, 241, 0.45)',
+              boxShadow: '0 12px 35px -5px rgba(0, 0, 0, 0.85), 0 0 25px rgba(99, 102, 241, 0.2)',
+            }}
+          >
+            <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+              <input
+                value={newText}
+                onChange={e => setNewText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && add()}
+                placeholder="Add new task or study assignment..."
+                className="flex-1 rounded-xl px-4 py-2.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 shadow-inner"
+                style={{ background: '#0d1117', border: '1px solid #2d3748', color: '#e2e8f0' }}
+              />
+
+              {/* Improved Priority Selector Box */}
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900/90 border border-slate-700/60 self-start sm:self-auto flex-shrink-0">
+                {(['high', 'medium', 'low'] as const).map(p => {
+                  const meta = PRIORITY_META[p];
+                  const Icon = meta.icon;
+                  const isSelected = newPriority === p;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setNewPriority(p)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none"
+                      style={{
+                        background: isSelected ? meta.bg : 'transparent',
+                        color: isSelected ? meta.color : '#94a3b8',
+                        border: isSelected ? `1px solid ${meta.border}` : '1px solid transparent',
+                        boxShadow: isSelected ? `0 0 10px ${meta.color}35` : 'none',
+                      }}
+                    >
+                      <Icon size={13} weight="fill" />
+                      <span>{meta.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={add}
+                disabled={!newText.trim() || isAddingTodo}
+                className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md flex-shrink-0"
+              >
+                {isAddingTodo ? (
+                  <>
+                    <CircleNotch size={14} className="animate-spin" />
+                    <span>Adding...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={14} weight="bold" />
+                    <span>Add Task</span>
+                  </>
+                )}
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Priority Override Confirmation Modal */}
       <AnimatePresence>
@@ -622,10 +714,11 @@ export default function Todo({ state, onUpdate }: Props) {
                 <button
                   type="button"
                   onClick={saveEditTodo}
-                  disabled={!editTitle.trim()}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white cursor-pointer transition-colors shadow"
+                  disabled={!editTitle.trim() || isSavingEditTodo}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white cursor-pointer transition-colors shadow flex items-center justify-center gap-2"
                 >
-                  Save Changes
+                  {isSavingEditTodo && <CircleNotch size={14} className="animate-spin" />}
+                  <span>{isSavingEditTodo ? 'Saving Changes...' : 'Save Changes'}</span>
                 </button>
                 <button
                   type="button"

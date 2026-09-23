@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AppState, UserProfile } from '@/data/types';
 import { calcAttendancePercent } from '@/data/store';
-import { profileApi } from '@/api/client';
+import { profileApi, codeforcesApi } from '@/api/client';
 import { toast } from 'sonner';
 import {
   UserCircle,
@@ -15,6 +15,10 @@ import {
   EnvelopeSimple,
   IdentificationCard,
   Sparkle,
+  CircleNotch,
+  CheckCircle,
+  WarningCircle,
+  Trophy,
 } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 
@@ -26,10 +30,20 @@ interface Props {
 export default function Profile({ state, onUpdate }: Props) {
   const isProfileIncomplete = !state.user.rollNo || !state.user.branch || !state.user.semester;
   const [editing, setEditing] = useState(isProfileIncomplete);
+  const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState<UserProfile>(state.user);
+
+  // Codeforces Verification State
+  const [isVerifyingCf, setIsVerifyingCf] = useState(false);
+  const [cfVerificationStatus, setCfVerificationStatus] = useState<'idle' | 'verified' | 'invalid'>('idle');
+  const [cfVerifiedUser, setCfVerifiedUser] = useState<{ handle: string; rating?: number; rank?: string } | null>(null);
 
   useEffect(() => {
     setForm(state.user);
+    if (state.user.codeforcesHandle) {
+      setCfVerificationStatus('verified');
+      setCfVerifiedUser({ handle: state.user.codeforcesHandle });
+    }
   }, [state.user]);
 
   useEffect(() => {
@@ -37,13 +51,69 @@ export default function Profile({ state, onUpdate }: Props) {
       if (res?.profile) {
         onUpdate(res.profile);
         setForm(res.profile);
+        if (res.profile.codeforcesHandle) {
+          setCfVerificationStatus('verified');
+          setCfVerifiedUser({ handle: res.profile.codeforcesHandle });
+        }
       }
     }).catch(err => {
       console.warn('Could not fetch latest profile from backend:', err);
     });
   }, []);
 
+  // Verify Codeforces Handle against API
+  const verifyCodeforces = async (handleToVerify: string): Promise<boolean> => {
+    const trimmed = handleToVerify.trim();
+    if (!trimmed) {
+      setCfVerificationStatus('idle');
+      setCfVerifiedUser(null);
+      return true;
+    }
+
+    setIsVerifyingCf(true);
+    try {
+      const res = await codeforcesApi.getUser(trimmed);
+      if (res?.user?.handle) {
+        setCfVerificationStatus('verified');
+        setCfVerifiedUser({
+          handle: res.user.handle,
+          rating: res.user.rating,
+          rank: res.user.rank,
+        });
+        toast.success(`Verified Codeforces user: ${res.user.handle} (${res.user.rank || 'Unrated'}, rating: ${res.user.rating || 0})`);
+        return true;
+      } else {
+        setCfVerificationStatus('invalid');
+        setCfVerifiedUser(null);
+        toast.error(`Codeforces handle "${trimmed}" was not found.`);
+        return false;
+      }
+    } catch (err: any) {
+      setCfVerificationStatus('invalid');
+      setCfVerifiedUser(null);
+      toast.error(err?.message || `Failed to verify Codeforces handle "${trimmed}".`);
+      return false;
+    } finally {
+      setIsVerifyingCf(false);
+    }
+  };
+
   const save = async () => {
+    if (isSaving) return;
+
+    // Strict validation: Codeforces handle must be verified if non-empty
+    const cfHandleTrimmed = (form.codeforcesHandle || '').trim();
+    if (cfHandleTrimmed) {
+      if (
+        cfVerificationStatus !== 'verified' ||
+        cfVerifiedUser?.handle?.toLowerCase() !== cfHandleTrimmed.toLowerCase()
+      ) {
+        toast.error('Please verify your Codeforces username before saving.');
+        return;
+      }
+    }
+
+    setIsSaving(true);
     try {
       const res = await profileApi.update({
         name: form.name,
@@ -52,6 +122,7 @@ export default function Profile({ state, onUpdate }: Props) {
         branch: form.branch,
         semester: form.semester,
         section: form.section,
+        codeforcesHandle: cfHandleTrimmed,
         photo: form.photo,
       });
       const updated = res.profile || res;
@@ -61,6 +132,8 @@ export default function Profile({ state, onUpdate }: Props) {
       setEditing(false);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to save profile to database.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -139,19 +212,29 @@ export default function Profile({ state, onUpdate }: Props) {
         ) : (
           <div className="flex gap-2 self-start sm:self-auto">
             <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: isSaving ? 1 : 1.03 }}
+              whileTap={{ scale: isSaving ? 1 : 0.97 }}
               onClick={save}
-              className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl font-semibold bg-indigo-600 text-white cursor-pointer"
+              disabled={isSaving || (Boolean((form.codeforcesHandle || '').trim()) && cfVerificationStatus !== 'verified')}
+              className={`flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl font-semibold bg-indigo-600 text-white ${
+                isSaving || (Boolean((form.codeforcesHandle || '').trim()) && cfVerificationStatus !== 'verified')
+                  ? 'opacity-60 cursor-not-allowed'
+                  : 'cursor-pointer'
+              }`}
             >
-              <Check size={14} weight="bold" />
-              <span>Save</span>
+              {isSaving ? (
+                <CircleNotch size={14} weight="bold" className="animate-spin" />
+              ) : (
+                <Check size={14} weight="bold" />
+              )}
+              <span>{isSaving ? 'Saving...' : 'Save'}</span>
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={cancel}
-              className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl bg-slate-800 text-slate-300 cursor-pointer"
+              disabled={isSaving}
+              className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl bg-slate-800 text-slate-300 cursor-pointer disabled:opacity-50"
             >
               <X size={14} weight="bold" />
               <span>Cancel</span>
@@ -265,6 +348,76 @@ export default function Profile({ state, onUpdate }: Props) {
               )}
             </div>
           ))}
+        </div>
+
+        {/* Codeforces Username */}
+        <div className="mt-4 pt-4 border-t" style={{ borderColor: '#2d3748' }}>
+          <label className="block text-xs mb-1.5 text-slate-400 font-semibold tracking-wider uppercase">
+            Codeforces Username
+          </label>
+          {editing ? (
+            <div className="flex gap-2 items-center">
+              <input
+                value={form.codeforcesHandle || ''}
+                onChange={e => {
+                  const val = e.target.value;
+                  setForm(p => ({ ...p, codeforcesHandle: val }));
+                  if (val.trim() === (state.user.codeforcesHandle || '').trim() && val.trim() !== '') {
+                    setCfVerificationStatus('verified');
+                  } else {
+                    setCfVerificationStatus('idle');
+                  }
+                }}
+                className="flex-1 rounded-xl px-3.5 py-2 text-xs outline-none font-mono"
+                style={{
+                  background: '#0d1117',
+                  border: `1px solid ${
+                    cfVerificationStatus === 'verified'
+                      ? '#22c55e'
+                      : cfVerificationStatus === 'invalid'
+                      ? '#ef4444'
+                      : '#2d3748'
+                  }`,
+                  color: '#e2e8f0',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => verifyCodeforces(form.codeforcesHandle || '')}
+                disabled={isVerifyingCf || !(form.codeforcesHandle || '').trim() || cfVerificationStatus === 'verified'}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 flex-shrink-0 cursor-pointer ${
+                  cfVerificationStatus === 'verified'
+                    ? 'bg-emerald-600 text-white cursor-default'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40'
+                }`}
+              >
+                {isVerifyingCf ? (
+                  <>
+                    <CircleNotch size={14} weight="bold" className="animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : cfVerificationStatus === 'verified' ? (
+                  <>
+                    <Check size={14} weight="bold" />
+                    <span>Verified</span>
+                  </>
+                ) : (
+                  <span>Verify</span>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div
+              className="text-xs py-2.5 px-3.5 rounded-xl text-slate-200 font-mono"
+              style={{ background: '#0d1117', border: '1px solid #2d3748' }}
+            >
+              {state.user.codeforcesHandle ? (
+                <span className="text-amber-300 font-semibold">@{state.user.codeforcesHandle}</span>
+              ) : (
+                <span className="text-slate-500 italic font-sans">Not set</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

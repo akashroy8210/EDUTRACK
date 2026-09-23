@@ -28,7 +28,7 @@ async function updateProfile(userId, updateData) {
     }
   }
 
-  const fields = ['name', 'rollNo', 'branch', 'semester', 'section', 'photo', 'timezone'];
+  const fields = ['name', 'rollNo', 'branch', 'semester', 'section', 'photo', 'timezone', 'codeforcesHandle'];
   fields.forEach(field => {
     if (updateData[field] !== undefined) {
       user[field] = typeof updateData[field] === 'string' ? updateData[field].trim() : updateData[field];

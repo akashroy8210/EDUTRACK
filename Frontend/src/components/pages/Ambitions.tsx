@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Lightning,
   Rocket,
+  CircleNotch,
 } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 
@@ -49,6 +50,8 @@ export default function Ambitions({ state, onUpdate }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'one-month' | 'short-term' | 'long-term'>('all');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAddingAchievement, setIsAddingAchievement] = useState<Record<string, boolean>>({});
 
   const [form, setForm] = useState({
     title: '',
@@ -84,48 +87,52 @@ export default function Ambitions({ state, onUpdate }: Props) {
   };
 
   const save = async () => {
-    if (!form.title.trim()) return;
+    if (isSaving || !form.title.trim()) return;
+    setIsSaving(true);
+    try {
+      if (editingId) {
+        try {
+          await goalsApi.update(editingId, form);
+        } catch (err) {
+          console.warn('Could not update goal on backend:', err);
+        }
+        onUpdate(state.ambitions.map(a => (a.id === editingId ? { ...a, ...form } : a)));
+        toast.success(`Updated ambition "${form.title}"`);
+      } else {
+        let createdId = `a${Date.now()}`;
+        try {
+          const res = await goalsApi.create({
+            title: form.title.trim(),
+            description: form.description.trim(),
+            type: form.type,
+            deadline: form.deadline || undefined,
+          });
+          const created = res.goal || res;
+          if (created?._id || created?.id) createdId = created._id || created.id;
+        } catch (err) {
+          console.warn('Could not create goal on backend:', err);
+        }
 
-    if (editingId) {
-      try {
-        await goalsApi.update(editingId, form);
-      } catch (err) {
-        console.warn('Could not update goal on backend:', err);
-      }
-      onUpdate(state.ambitions.map(a => (a.id === editingId ? { ...a, ...form } : a)));
-      toast.success(`Updated ambition "${form.title}"`);
-    } else {
-      let createdId = `a${Date.now()}`;
-      try {
-        const res = await goalsApi.create({
+        const a: Ambition = {
+          id: createdId,
           title: form.title.trim(),
           description: form.description.trim(),
           type: form.type,
           deadline: form.deadline || undefined,
-        });
-        const created = res.goal || res;
-        if (created?._id || created?.id) createdId = created._id || created.id;
-      } catch (err) {
-        console.warn('Could not create goal on backend:', err);
+          achievements: [],
+          status: 'active',
+          createdAt: today,
+        };
+        onUpdate([...state.ambitions, a]);
+        toast.success(`Created new ${form.type}: "${a.title}"`);
       }
 
-      const a: Ambition = {
-        id: createdId,
-        title: form.title.trim(),
-        description: form.description.trim(),
-        type: form.type,
-        deadline: form.deadline || undefined,
-        achievements: [],
-        status: 'active',
-        createdAt: today,
-      };
-      onUpdate([...state.ambitions, a]);
-      toast.success(`Created new ${form.type}: "${a.title}"`);
+      setForm({ title: '', description: '', type: 'one-month', deadline: '' });
+      setShowForm(false);
+      setEditingId(null);
+    } finally {
+      setIsSaving(false);
     }
-
-    setForm({ title: '', description: '', type: 'one-month', deadline: '' });
-    setShowForm(false);
-    setEditingId(null);
   };
 
   const updateStatus = async (id: string, status: Ambition['status']) => {
@@ -157,39 +164,44 @@ export default function Ambitions({ state, onUpdate }: Props) {
 
   const addAchievement = async (ambitionId: string) => {
     const text = (newAchievementText[ambitionId] || '').trim();
-    if (!text) return;
+    if (!text || isAddingAchievement[ambitionId]) return;
+    setIsAddingAchievement(prev => ({ ...prev, [ambitionId]: true }));
 
-    let milestoneId = `ach_${Date.now()}`;
     try {
-      const res = await goalsApi.addAchievement(ambitionId, { text, date: today });
-      const goal = res.goal || res;
-      if (goal?.achievements && goal.achievements.length > 0) {
-        const last = goal.achievements[goal.achievements.length - 1];
-        if (last?._id || last?.id) milestoneId = last._id || last.id;
+      let milestoneId = `ach_${Date.now()}`;
+      try {
+        const res = await goalsApi.addAchievement(ambitionId, { text, date: today });
+        const goal = res.goal || res;
+        if (goal?.achievements && goal.achievements.length > 0) {
+          const last = goal.achievements[goal.achievements.length - 1];
+          if (last?._id || last?.id) milestoneId = last._id || last.id;
+        }
+      } catch (err) {
+        console.warn('Could not save achievement to backend:', err);
       }
-    } catch (err) {
-      console.warn('Could not save achievement to backend:', err);
+
+      const newMilestone: AmbitionAchievement = {
+        id: milestoneId,
+        text,
+        date: today,
+      };
+
+      onUpdate(
+        state.ambitions.map(a => {
+          if (a.id !== ambitionId) return a;
+          const currentList = Array.isArray(a.achievements) ? a.achievements : [];
+          return {
+            ...a,
+            achievements: [...currentList, newMilestone],
+          };
+        })
+      );
+
+      toast.success(`Logged milestone: "${text}"`);
+      setNewAchievementText(prev => ({ ...prev, [ambitionId]: '' }));
+    } finally {
+      setIsAddingAchievement(prev => ({ ...prev, [ambitionId]: false }));
     }
-
-    const newMilestone: AmbitionAchievement = {
-      id: milestoneId,
-      text,
-      date: today,
-    };
-
-    onUpdate(
-      state.ambitions.map(a => {
-        if (a.id !== ambitionId) return a;
-        const currentList = Array.isArray(a.achievements) ? a.achievements : [];
-        return {
-          ...a,
-          achievements: [...currentList, newMilestone],
-        };
-      })
-    );
-
-    toast.success(`Logged milestone: "${text}"`);
-    setNewAchievementText(prev => ({ ...prev, [ambitionId]: '' }));
   };
 
   const removeAchievement = async (ambitionId: string, achievementId: string) => {
@@ -316,10 +328,11 @@ export default function Ambitions({ state, onUpdate }: Props) {
           <div className="flex gap-2 pt-2 border-t" style={{ borderColor: '#2d3748' }}>
             <button
               onClick={save}
-              disabled={!form.title.trim()}
-              className="px-5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 cursor-pointer"
+              disabled={isSaving || !form.title.trim()}
+              className="px-5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 cursor-pointer flex items-center gap-1.5"
             >
-              {editingId ? 'Save Changes' : 'Create Goal'}
+              {isSaving && <CircleNotch size={14} weight="bold" className="animate-spin" />}
+              <span>{isSaving ? 'Saving...' : editingId ? 'Save Changes' : 'Create Goal'}</span>
             </button>
             <button
               onClick={() => setShowForm(false)}
@@ -486,11 +499,15 @@ export default function Ambitions({ state, onUpdate }: Props) {
                     />
                     <button
                       onClick={() => addAchievement(a.id)}
-                      disabled={!(newAchievementText[a.id] || '').trim()}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-1 cursor-pointer flex-shrink-0"
+                      disabled={isAddingAchievement[a.id] || !(newAchievementText[a.id] || '').trim()}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5 cursor-pointer flex-shrink-0"
                     >
-                      <span>+</span>
-                      <span>Log Milestone</span>
+                      {isAddingAchievement[a.id] ? (
+                        <CircleNotch size={14} weight="bold" className="animate-spin" />
+                      ) : (
+                        <span>+</span>
+                      )}
+                      <span>{isAddingAchievement[a.id] ? 'Logging...' : 'Log Milestone'}</span>
                     </button>
                   </div>
                 )}

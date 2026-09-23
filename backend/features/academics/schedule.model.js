@@ -48,6 +48,10 @@ const classSessionSchema = new mongoose.Schema(
       type: String, // 'YYYY-MM-DD'
       required: true,
     },
+    color: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );

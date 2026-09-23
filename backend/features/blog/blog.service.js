@@ -27,6 +27,7 @@ async function createBlog(userId, data) {
     date: data.date || data.createdAt || today,
     time: data.time || currentTime,
     tags: Array.isArray(data.tags) ? data.tags : [],
+    category: data.category || 'Campus Life',
     mood: data.mood || 'focused',
     readTime: estimateReadTime(data.content || ''),
   });
@@ -38,7 +39,7 @@ async function updateBlog(userId, id, data) {
     throw new ApiError(404, 'Blog post not found.', 'NOT_FOUND');
   }
 
-  const fields = ['title', 'content', 'imageUrl', 'date', 'time', 'tags', 'mood'];
+  const fields = ['title', 'content', 'imageUrl', 'date', 'time', 'tags', 'mood', 'category'];
   fields.forEach(f => {
     if (data[f] !== undefined) blog[f] = data[f];
   });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AppState, ClassSession, Holiday, ScheduleValidity } from '@/data/types';
-import { getTodayDate } from '@/data/store';
+import { getTodayDate, calculateSessionTotalClasses } from '@/data/store';
 import { academicsApi } from '@/api/client';
 import { toast } from 'sonner';
 import {
@@ -19,25 +19,50 @@ import {
   ArrowsClockwise,
   X,
   ShieldCheck,
+  Palette,
+  CircleNotch,
 } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-/**
- * Props passed to the Schedule page component.
- */
-interface Props {
-  /** Root application state containing class schedule and holidays */
-  state: AppState;
-  /** Callback to update scheduled class sessions in parent state */
-  onUpdateSchedule: (schedule: ClassSession[]) => void;
-  /** Callback to update academic holidays list in parent state */
-  onUpdateHolidays: (holidays: Holiday[]) => void;
-  /** Optional callback to update semester validity bounds */
-  onUpdateValidity?: (validity: ScheduleValidity) => void;
-}
-
 /** Standard instructional weekdays */
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+/** Curated modern color palette for distinct schedule differentiation */
+export const SCHEDULE_PALETTE = [
+  '#6366f1', // Electric Indigo
+  '#10b981', // Emerald Green
+  '#f59e0b', // Amber Orange
+  '#ec4899', // Rose Pink
+  '#06b6d4', // Cyan Sky
+  '#8b5cf6', // Violet
+];
+
+/**
+ * Returns a distinct color for a class session in a day.
+ */
+export const getDayClassColor = (
+  first: ClassSession | ClassSession[],
+  second?: ClassSession | ClassSession[],
+  third?: number
+): string => {
+  if (Array.isArray(first)) {
+    const dayClasses = first;
+    const currentClass = second as ClassSession;
+    if (currentClass?.color) return currentClass.color;
+    const idx = third !== undefined ? third : (currentClass ? dayClasses.findIndex(c => c.id === currentClass.id) : 0);
+    return SCHEDULE_PALETTE[(idx >= 0 ? idx : 0) % SCHEDULE_PALETTE.length];
+  } else {
+    const currentClass = first as ClassSession;
+    if (currentClass.color) return currentClass.color;
+    const allSchedule = second as ClassSession[] | undefined;
+    if (allSchedule && Array.isArray(allSchedule)) {
+      const dayClasses = allSchedule.filter(c => c.day === currentClass.day);
+      const idx = dayClasses.findIndex(c => c.id === currentClass.id);
+      return SCHEDULE_PALETTE[(idx >= 0 ? idx : 0) % SCHEDULE_PALETTE.length];
+    }
+    return SCHEDULE_PALETTE[0];
+  }
+};
 
 /** Theme styling for session categories */
 const TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -61,6 +86,20 @@ const formatIntervalDate = (dateStr?: string) => {
     return `Till ${dateStr}`;
   }
 };
+
+/**
+ * Props passed to the Schedule page component.
+ */
+interface Props {
+  /** Root application state containing class schedule and holidays */
+  state: AppState;
+  /** Callback to update scheduled class sessions in parent state */
+  onUpdateSchedule: (schedule: ClassSession[]) => void;
+  /** Callback to update academic holidays list in parent state */
+  onUpdateHolidays: (holidays: Holiday[]) => void;
+  /** Optional callback to update semester validity bounds */
+  onUpdateValidity?: (validity: ScheduleValidity) => void;
+}
 
 /**
  * Class Schedule Page Component.
@@ -128,8 +167,14 @@ export default function Schedule({
     classId: '',
   });
 
-  const [bulkField, setBulkField] = useState<'time' | 'room' | 'type' | 'endDate'>('time');
+  const [bulkField, setBulkField] = useState<'time' | 'room' | 'type' | 'startDate' | 'endDate' | 'color' | 'autoColor'>('time');
   const [bulkValue, setBulkValue] = useState('');
+
+  // Loading states to stop multiple parallel requests
+  const [isAddingClass, setIsAddingClass] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isApplyingBulk, setIsApplyingBulk] = useState(false);
+  const [isDeletingSelected, setIsDeletingSelected] = useState(false);
 
   const toggleSelect = (id: string) => {
     const next = new Set(selectedIds);
@@ -138,10 +183,11 @@ export default function Schedule({
   };
 
   const handleAddClass = async () => {
-    if (!newClassForm.subjectName?.trim()) {
-      toast.error('Please enter or select a subject name');
+    if (!newClassForm.subjectName?.trim() || isAddingClass) {
+      if (!newClassForm.subjectName?.trim()) toast.error('Please enter or select a subject name');
       return;
     }
+    setIsAddingClass(true);
     const subjName = newClassForm.subjectName.trim();
     let subj = state.subjects.find(
       s => s.name.toLowerCase() === subjName.toLowerCase()
@@ -161,6 +207,10 @@ export default function Schedule({
         subjectId = createdSubj.id || createdSubj._id;
       }
 
+      const daySessions = state.schedule.filter(c => c.day === (newClassForm.day || 'Monday'));
+      const autoColor = SCHEDULE_PALETTE[daySessions.length % SCHEDULE_PALETTE.length];
+      const assignedColor = newClassForm.color || autoColor;
+
       const res = await academicsApi.addScheduleSlot({
         subjectId,
         subjectName: subjName,
@@ -170,6 +220,7 @@ export default function Schedule({
         type: newClassForm.type || 'lecture',
         startDate: newClassForm.startDate || today,
         endDate: newClassForm.endDate || defaultEndDate,
+        color: assignedColor,
       });
 
       const session = res.session || res;
@@ -183,18 +234,23 @@ export default function Schedule({
         type: session.type || newClassForm.type || 'lecture',
         startDate: session.startDate || newClassForm.startDate || today,
         endDate: session.endDate || newClassForm.endDate || defaultEndDate,
+        color: session.color || assignedColor,
       };
 
       onUpdateSchedule([...state.schedule, newClass]);
-      toast.success(`Scheduled ${newClass.subjectName} (repeats weekly ${formatIntervalDate(newClass.endDate)})`);
+      const sessionCount = calculateSessionTotalClasses(newClass, state.holidays);
+      toast.success(`Scheduled ${newClass.subjectName} (${sessionCount} total classes, repeats weekly ${formatIntervalDate(newClass.endDate)})`);
       setNewClassForm(prev => ({
         ...prev,
         subjectName: '',
         time: '09:00 - 10:00',
         room: 'Room 101',
+        color: undefined,
       }));
     } catch (err: any) {
       toast.error(err?.message || 'Failed to schedule class session');
+    } finally {
+      setIsAddingClass(false);
     }
   };
 
@@ -204,11 +260,14 @@ export default function Schedule({
   };
 
   const saveEdit = async () => {
-    if (!editingId) return;
+    if (!editingId || isSavingEdit) return;
+    setIsSavingEdit(true);
     try {
       await academicsApi.updateScheduleSlot(editingId, editForm);
     } catch (err) {
       console.warn('Could not update session on backend:', err);
+    } finally {
+      setIsSavingEdit(false);
     }
     onUpdateSchedule(state.schedule.map(c => (c.id === editingId ? { ...c, ...editForm } : c)));
     toast.success(`Updated session "${editForm.subjectName || 'Class'}" successfully`);
@@ -226,29 +285,52 @@ export default function Schedule({
   };
 
   const deleteSelected = async () => {
+    if (selectedIds.size === 0 || isDeletingSelected) return;
+    setIsDeletingSelected(true);
     const count = selectedIds.size;
     const ids = Array.from(selectedIds);
-    await Promise.allSettled(ids.map(id => academicsApi.deleteScheduleSlot(id)));
-    onUpdateSchedule(state.schedule.filter(c => !selectedIds.has(c.id)));
-    setSelectedIds(new Set());
-    toast.success(`Deleted ${count} class session${count > 1 ? 's' : ''}`);
+    try {
+      await Promise.allSettled(ids.map(id => academicsApi.deleteScheduleSlot(id)));
+      onUpdateSchedule(state.schedule.filter(c => !selectedIds.has(c.id)));
+      setSelectedIds(new Set());
+      toast.success(`Deleted ${count} class session${count > 1 ? 's' : ''}`);
+    } finally {
+      setIsDeletingSelected(false);
+    }
   };
 
   const applyBulk = async () => {
-    if (!bulkValue.trim() || selectedIds.size === 0) return;
+    if ((!bulkValue.trim() && bulkField !== 'autoColor') || selectedIds.size === 0 || isApplyingBulk) return;
+    setIsApplyingBulk(true);
     const ids = Array.from(selectedIds);
     try {
-      await Promise.allSettled(
-        ids.map(id => academicsApi.updateScheduleSlot(id, { [bulkField]: bulkValue }))
-      );
-      onUpdateSchedule(
-        state.schedule.map(c => (selectedIds.has(c.id) ? { ...c, [bulkField]: bulkValue } : c))
-      );
-      toast.success(`Updated ${bulkField} for ${selectedIds.size} selected classes in database`);
+      if (bulkField === 'autoColor') {
+        const dayCountMap: Record<string, number> = {};
+        const updated = state.schedule.map(c => {
+          if (!selectedIds.has(c.id)) return c;
+          const count = dayCountMap[c.day] || 0;
+          dayCountMap[c.day] = count + 1;
+          const assigned = SCHEDULE_PALETTE[count % SCHEDULE_PALETTE.length];
+          academicsApi.updateScheduleSlot(c.id, { color: assigned }).catch(() => {});
+          return { ...c, color: assigned };
+        });
+        onUpdateSchedule(updated);
+        toast.success(`Mapped distinct colors across ${selectedIds.size} sessions!`);
+      } else {
+        await Promise.allSettled(
+          ids.map(id => academicsApi.updateScheduleSlot(id, { [bulkField]: bulkValue }))
+        );
+        onUpdateSchedule(
+          state.schedule.map(c => (selectedIds.has(c.id) ? { ...c, [bulkField]: bulkValue } : c))
+        );
+        toast.success(`Updated ${bulkField} for ${selectedIds.size} selected classes`);
+      }
       setSelectedIds(new Set());
       setBulkValue('');
     } catch {
       toast.error('Failed to update selected classes in database');
+    } finally {
+      setIsApplyingBulk(false);
     }
   };
 
@@ -310,6 +392,7 @@ export default function Schedule({
           }
         }
 
+        const assignedColor = SCHEDULE_PALETTE[i % SCHEDULE_PALETTE.length];
         await academicsApi.addScheduleSlot({
           subjectId: subjectId || undefined,
           subjectName,
@@ -319,6 +402,7 @@ export default function Schedule({
           type: (['lecture', 'lab', 'tutorial'].includes(type) ? type : 'lecture') as ClassSession['type'],
           startDate: csvValidityStart || today,
           endDate: csvValidityEnd || defaultEndDate,
+          color: assignedColor,
         });
       }
 
@@ -329,7 +413,7 @@ export default function Schedule({
       ]);
 
       if (scheduleRes.status === 'fulfilled' && scheduleRes.value?.schedule) {
-        const mappedSchedule = scheduleRes.value.schedule.map((c: any) => ({
+        const mappedSchedule = scheduleRes.value.schedule.map((c: any, idx: number) => ({
           id: c._id || c.id,
           subjectId: typeof c.subjectId === 'object' ? c.subjectId?._id : c.subjectId,
           subjectName: typeof c.subjectId === 'object' ? c.subjectId?.name : (c.subjectName || 'Class'),
@@ -339,6 +423,7 @@ export default function Schedule({
           type: c.type || 'lecture',
           startDate: c.startDate || today,
           endDate: c.endDate || defaultEndDate,
+          color: c.color || SCHEDULE_PALETTE[idx % SCHEDULE_PALETTE.length],
         }));
         onUpdateSchedule(mappedSchedule);
       }
@@ -616,8 +701,10 @@ export default function Schedule({
                   <div className="p-6 text-center text-xs text-slate-400">No scheduled classes</div>
                 ) : (
                   <div className="divide-y divide-slate-800/40">
-                    {classes.map(c => {
+                    {classes.map((c, classIndex) => {
                       const subject = state.subjects.find(s => s.id === c.subjectId);
+                      const sessionColor = getDayClassColor(classes, c, classIndex);
+                      const sessionTotal = calculateSessionTotalClasses(c, state.holidays);
                       const typeBadge = TYPE_COLORS[c.type] || TYPE_COLORS.lecture;
                       const classHoliday = isToday && state.holidays.find(
                         h => h.date === today && (h.type === 'full-day' || h.classId === c.id)
@@ -636,11 +723,18 @@ export default function Schedule({
                             opacity: classHoliday ? 0.5 : 1,
                           }}
                         >
-                          {/* Time Chip */}
+                          {/* Time Chip with Accent Border */}
                           <div className="w-40 sm:w-44 flex-shrink-0 min-w-fit">
                             <span
                               className="text-xs font-semibold px-3 py-1.5 rounded-lg font-mono inline-flex items-center gap-2 whitespace-nowrap shadow-xs"
-                              style={{ background: '#1c2230', color: '#94a3b8', border: '1px solid #334155' }}
+                              style={{
+                                background: '#1c2230',
+                                color: '#e2e8f0',
+                                borderLeft: `3.5px solid ${sessionColor}`,
+                                borderTop: '1px solid #334155',
+                                borderRight: '1px solid #334155',
+                                borderBottom: '1px solid #334155',
+                              }}
                             >
                               <Clock size={13} className="text-slate-400 flex-shrink-0" />
                               <span className="whitespace-nowrap tracking-tight">{c.time}</span>
@@ -648,13 +742,17 @@ export default function Schedule({
                           </div>
 
                           <div
-                            className="hidden sm:block w-1.5 h-10 rounded-full flex-shrink-0"
-                            style={{ background: subject?.color || '#6366f1' }}
+                            className="hidden sm:block w-1.5 h-10 rounded-full flex-shrink-0 shadow-sm"
+                            style={{ background: sessionColor }}
                           />
 
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm sm:text-base font-semibold truncate text-slate-100">
-                              {c.subjectName}
+                            <div className="text-sm sm:text-base font-semibold truncate text-slate-100 flex items-center gap-2">
+                              <span>{c.subjectName}</span>
+                              <span
+                                className="w-2 h-2 rounded-full inline-block flex-shrink-0"
+                                style={{ background: sessionColor }}
+                              />
                             </div>
                             <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 flex-wrap">
                               <span className="flex items-center gap-1 font-mono">
@@ -662,13 +760,11 @@ export default function Schedule({
                                 <span>{c.room}</span>
                               </span>
 
-                              {/* Google Calendar style repeat interval badge */}
-                              {c.endDate && (
-                                <span className="inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-slate-800/90 text-slate-300 border border-slate-700/60">
-                                  <ArrowsClockwise size={11} className="text-indigo-400" />
-                                  <span>{formatIntervalDate(c.endDate)}</span>
-                                </span>
-                              )}
+                              {/* Dynamic Total Classes Badge derived from Start Date and End Date */}
+                              <span className="inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-slate-800/90 text-indigo-300 border border-indigo-500/30">
+                                <Calendar size={11} className="text-indigo-400" />
+                                <span>{sessionTotal} Total Classes {c.endDate ? `(${formatIntervalDate(c.endDate)})` : ''}</span>
+                              </span>
 
                               {/* Session-specific Attendance Pill */}
                               {clsTotal > 0 ? (
@@ -680,28 +776,19 @@ export default function Schedule({
                                   }`}
                                 >
                                   <ShieldCheck size={12} className={clsPct! >= 75 ? 'text-emerald-400' : 'text-amber-400'} />
-                                  <span>Attendance: {clsAttended}/{clsTotal} ({clsPct}%)</span>
-                                </span>
-                              ) : subject && subject.totalClasses > 0 ? (
-                                <span
-                                  className={`inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md border ${
-                                    (subject.attendedClasses / subject.totalClasses) >= 0.75
-                                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                                      : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                                  }`}
-                                >
-                                  <ShieldCheck size={12} className={(subject.attendedClasses / subject.totalClasses) >= 0.75 ? 'text-emerald-400' : 'text-amber-400'} />
-                                  <span>Course Att: {Math.round((subject.attendedClasses / subject.totalClasses) * 100)}%</span>
+                                  <span>Logs: {clsAttended}/{clsTotal} ({clsPct}%)</span>
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-slate-800/70 text-slate-400 border border-slate-700/60">
                                   <ShieldCheck size={12} className="text-slate-500" />
-                                  <span>Attendance: No logs</span>
+                                  <span>No logs</span>
                                 </span>
                               )}
 
                               {classHoliday && (
-                                <span className="text-amber-400 font-medium">· Class Suspended (Holiday)</span>
+                                <span className="inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                  <span>Holiday: {classHoliday.label}</span>
+                                </span>
                               )}
                             </div>
                           </div>
@@ -829,7 +916,7 @@ export default function Schedule({
               {/* Recurring Interval End Date */}
               <div>
                 <label className="block text-xs mb-1 text-slate-400 font-semibold">
-                  Recurs Weekly Until (Interval)
+                  Recurs Weekly Until (Last Date)
                 </label>
                 <input
                   type="date"
@@ -839,18 +926,60 @@ export default function Schedule({
                   style={{ background: '#0d1117', border: '1px solid #2d3748', color: '#e2e8f0' }}
                 />
               </div>
+
+              {/* Distinct Color Palette */}
+              <div>
+                <label className="block text-xs mb-1 text-slate-400 font-semibold flex items-center gap-1.5">
+                  <Palette size={13} className="text-indigo-400" />
+                  <span>Session Color (Distinct per Day)</span>
+                </label>
+                <div className="flex items-center gap-2 pt-1.5">
+                  {SCHEDULE_PALETTE.map((palColor) => {
+                    const daySessions = state.schedule.filter(c => c.day === (newClassForm.day || 'Monday'));
+                    const autoColor = SCHEDULE_PALETTE[daySessions.length % SCHEDULE_PALETTE.length];
+                    const isSelected = (newClassForm.color || autoColor) === palColor;
+                    return (
+                      <button
+                        key={palColor}
+                        type="button"
+                        onClick={() => setNewClassForm(p => ({ ...p, color: palColor }))}
+                        className="w-7 h-7 rounded-full transition-all cursor-pointer flex items-center justify-center"
+                        style={{
+                          background: palColor,
+                          boxShadow: isSelected ? `0 0 10px ${palColor}, 0 0 0 2px #fff` : 'none',
+                          transform: isSelected ? 'scale(1.18)' : 'scale(1)',
+                        }}
+                      >
+                        {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-[11px] text-slate-500 font-mono">
-                {newClassForm.endDate ? `Repeats every ${newClassForm.day || 'Monday'} until ${newClassForm.endDate}` : ''}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+              <span className="text-xs text-indigo-300 font-mono flex items-center gap-1.5">
+                <Calendar size={13} className="text-indigo-400" />
+                <span>
+                  {calculateSessionTotalClasses(
+                    {
+                      day: newClassForm.day || 'Monday',
+                      startDate: newClassForm.startDate || today,
+                      endDate: newClassForm.endDate || defaultEndDate,
+                    },
+                    state.holidays
+                  )}{' '}
+                  total classes scheduled ({newClassForm.startDate || today} to {newClassForm.endDate || defaultEndDate})
+                </span>
               </span>
               <button
                 onClick={handleAddClass}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                disabled={isAddingClass || !newClassForm.subjectName?.trim()}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white transition-colors cursor-pointer shadow-md self-start sm:self-auto"
               >
-                <Plus size={14} weight="bold" />
-                <span>Add Class Session</span>
+                {isAddingClass ? <CircleNotch size={14} className="animate-spin" /> : <Plus size={14} weight="bold" />}
+                <span>{isAddingClass ? 'Adding Session...' : 'Add Class Session'}</span>
               </button>
             </div>
           </div>
@@ -877,41 +1006,62 @@ export default function Schedule({
                 <span className="text-xs font-semibold text-indigo-300">Bulk Edit:</span>
                 <select
                   value={bulkField}
-                  onChange={e => setBulkField(e.target.value as any)}
-                  className="rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                  onChange={e => {
+                    const val = e.target.value as any;
+                    setBulkField(val);
+                    if (val === 'startDate') setBulkValue(today);
+                    else if (val === 'endDate') setBulkValue(defaultEndDate);
+                    else if (val === 'autoColor') setBulkValue('auto');
+                    else setBulkValue('');
+                  }}
+                  className="rounded-lg px-2.5 py-1.5 text-xs outline-none font-medium"
                   style={{ background: '#0d1117', border: '1px solid #2d3748', color: '#e2e8f0' }}
                 >
                   <option value="time">Time</option>
                   <option value="room">Room</option>
                   <option value="type">Type</option>
-                  <option value="endDate">Repeat Until Date</option>
+                  <option value="startDate">Start Date</option>
+                  <option value="endDate">Repeat Until Date (Last Date)</option>
+                  <option value="autoColor">Auto-Assign Distinct Colors (3-4 Colors/Day)</option>
+                  <option value="color">Specific Color</option>
                 </select>
-                <input
-                  value={bulkValue}
-                  onChange={e => setBulkValue(e.target.value)}
-                  placeholder={
-                    bulkField === 'time'
-                      ? '09:00 - 10:00'
-                      : bulkField === 'endDate'
-                      ? defaultEndDate
-                      : bulkField === 'type'
-                      ? 'lecture/lab/tutorial'
-                      : 'Room 204'
-                  }
-                  className="rounded-lg px-3 py-1.5 text-xs outline-none flex-1 min-w-36 font-mono"
-                  style={{ background: '#0d1117', border: '1px solid #2d3748', color: '#e2e8f0' }}
-                />
+                {bulkField !== 'autoColor' && (
+                  <input
+                    type={bulkField === 'startDate' || bulkField === 'endDate' ? 'date' : 'text'}
+                    value={bulkValue}
+                    onChange={e => setBulkValue(e.target.value)}
+                    placeholder={
+                      bulkField === 'time'
+                        ? '09:00 - 10:00'
+                        : bulkField === 'startDate'
+                        ? today
+                        : bulkField === 'endDate'
+                        ? defaultEndDate
+                        : bulkField === 'color'
+                        ? '#6366f1'
+                        : bulkField === 'type'
+                        ? 'lecture/lab/tutorial'
+                        : 'Room 204'
+                    }
+                    className="rounded-lg px-3 py-1.5 text-xs outline-none flex-1 min-w-36 font-mono"
+                    style={{ background: '#0d1117', border: '1px solid #2d3748', color: '#e2e8f0' }}
+                  />
+                )}
                 <button
                   onClick={applyBulk}
-                  className="text-xs px-3.5 py-1.5 rounded-lg font-semibold bg-indigo-600 text-white cursor-pointer hover:bg-indigo-500"
+                  disabled={isApplyingBulk}
+                  className="text-xs px-3.5 py-1.5 rounded-lg font-semibold bg-indigo-600 disabled:opacity-50 text-white cursor-pointer hover:bg-indigo-500 flex items-center gap-1.5"
                 >
-                  Apply
+                  {isApplyingBulk && <CircleNotch size={13} className="animate-spin" />}
+                  <span>{isApplyingBulk ? 'Applying...' : 'Apply'}</span>
                 </button>
                 <button
                   onClick={deleteSelected}
-                  className="text-xs px-3.5 py-1.5 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/30 cursor-pointer hover:bg-rose-500/25"
+                  disabled={isDeletingSelected}
+                  className="text-xs px-3.5 py-1.5 rounded-lg bg-rose-500/15 disabled:opacity-50 text-rose-400 border border-rose-500/30 cursor-pointer hover:bg-rose-500/25 flex items-center gap-1.5"
                 >
-                  Delete Selected
+                  {isDeletingSelected && <CircleNotch size={13} className="animate-spin" />}
+                  <span>{isDeletingSelected ? 'Deleting...' : 'Delete Selected'}</span>
                 </button>
                 <button
                   onClick={() => setSelectedIds(new Set())}
@@ -985,7 +1135,17 @@ export default function Schedule({
                                   </select>
                                 </div>
                                 <div>
-                                  <label className="block text-xs mb-1 text-slate-400">Repeat Until Date</label>
+                                  <label className="block text-xs mb-1 text-slate-400">Starts From Date</label>
+                                  <input
+                                    type="date"
+                                    value={editForm.startDate || today}
+                                    onChange={e => setEditForm(p => ({ ...p, startDate: e.target.value }))}
+                                    className="w-full rounded-lg px-3 py-2 text-xs outline-none font-mono"
+                                    style={{ background: '#0d1117', border: '1px solid #2d3748', color: '#e2e8f0' }}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs mb-1 text-slate-400">Repeat Until Date (Last Date)</label>
                                   <input
                                     type="date"
                                     value={editForm.endDate || defaultEndDate}
@@ -995,12 +1155,56 @@ export default function Schedule({
                                   />
                                 </div>
                               </div>
+                              {/* Color Selector for Edit Form */}
+                              <div>
+                                <label className="block text-xs mb-1 text-slate-400 font-semibold flex items-center gap-1.5">
+                                  <Palette size={13} className="text-indigo-400" />
+                                  <span>Session Color (Distinct per Day)</span>
+                                </label>
+                                <div className="flex items-center gap-2 pt-1">
+                                  {SCHEDULE_PALETTE.map((palColor) => {
+                                    const isSelected = (editForm.color || c.color || getDayClassColor(c, state.schedule)) === palColor;
+                                    return (
+                                      <button
+                                        key={palColor}
+                                        type="button"
+                                        onClick={() => setEditForm(p => ({ ...p, color: palColor }))}
+                                        className="w-6 h-6 rounded-full transition-all cursor-pointer flex items-center justify-center"
+                                        style={{
+                                          background: palColor,
+                                          boxShadow: isSelected ? `0 0 10px ${palColor}, 0 0 0 2px #fff` : 'none',
+                                          transform: isSelected ? 'scale(1.18)' : 'scale(1)',
+                                        }}
+                                      >
+                                        {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                              {/* Total Classes Live Calculation */}
+                              <div className="text-xs text-indigo-300 font-mono flex items-center gap-2 pt-1 border-t border-slate-800">
+                                <Calendar size={13} className="text-indigo-400" />
+                                <span>
+                                  {calculateSessionTotalClasses(
+                                    {
+                                      day: c.day,
+                                      startDate: editForm.startDate || c.startDate || today,
+                                      endDate: editForm.endDate || c.endDate || defaultEndDate,
+                                    },
+                                    state.holidays
+                                  )}{' '}
+                                  total classes scheduled ({editForm.startDate || c.startDate || today} to {editForm.endDate || c.endDate || defaultEndDate})
+                                </span>
+                              </div>
                               <div className="flex gap-2 pt-1">
                                 <button
                                   onClick={saveEdit}
-                                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white cursor-pointer hover:bg-indigo-500"
+                                  disabled={isSavingEdit}
+                                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white cursor-pointer flex items-center gap-1.5"
                                 >
-                                  Save Changes
+                                  {isSavingEdit && <CircleNotch size={13} className="animate-spin" />}
+                                  <span>{isSavingEdit ? 'Saving...' : 'Save Changes'}</span>
                                 </button>
                                 <button
                                   onClick={() => setEditingId(null)}
@@ -1016,6 +1220,7 @@ export default function Schedule({
                               style={{
                                 background: '#161b22',
                                 border: `1px solid ${selectedIds.has(c.id) ? '#6366f1' : '#2d3748'}`,
+                                borderLeft: `4px solid ${c.color || getDayClassColor(c, state.schedule)}`,
                               }}
                             >
                               <input
@@ -1025,19 +1230,34 @@ export default function Schedule({
                                 className="w-4 h-4 rounded accent-indigo-600 flex-shrink-0 cursor-pointer"
                               />
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-semibold truncate text-slate-100">{c.subjectName}</div>
-                                <div className="text-xs text-slate-400 font-mono mt-0.5 flex items-center gap-2 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                    style={{ background: c.color || getDayClassColor(c, state.schedule) }}
+                                  />
+                                  <div className="text-sm font-semibold truncate text-slate-100">{c.subjectName}</div>
+                                </div>
+                                <div className="text-xs text-slate-400 font-mono mt-1 flex items-center gap-2 flex-wrap">
                                   <span>{c.time}</span>
                                   <span>·</span>
                                   <span>{c.room}</span>
                                   <span>·</span>
                                   <span className="capitalize">{c.type}</span>
-                                  {c.endDate && (
-                                    <>
-                                      <span>·</span>
-                                      <span className="text-indigo-400">{formatIntervalDate(c.endDate)}</span>
-                                    </>
-                                  )}
+                                  <span>·</span>
+                                  <span className="text-indigo-400">
+                                    {formatIntervalDate(c.startDate || today)} – {formatIntervalDate(c.endDate || defaultEndDate)}
+                                  </span>
+                                  <span>·</span>
+                                  <span
+                                    className="px-2 py-0.5 rounded-md font-semibold text-[11px]"
+                                    style={{
+                                      background: `${c.color || getDayClassColor(c, state.schedule)}20`,
+                                      color: c.color || getDayClassColor(c, state.schedule),
+                                      border: `1px solid ${c.color || getDayClassColor(c, state.schedule)}40`,
+                                    }}
+                                  >
+                                    {calculateSessionTotalClasses(c, state.holidays)} Total Classes
+                                  </span>
                                   <span>·</span>
                                   {(() => {
                                     const clsRecords = state.attendanceHistory.filter(r => r.classId === c.id);
@@ -1046,7 +1266,7 @@ export default function Schedule({
                                     const clsPct = clsTotal > 0 ? Math.round((clsAttended / clsTotal) * 100) : null;
                                     return clsTotal > 0 ? (
                                       <span className={clsPct! >= 75 ? 'text-emerald-400 font-semibold' : 'text-amber-400 font-semibold'}>
-                                        Att: {clsAttended}/{clsTotal} ({clsPct}%)
+                                        Att: {clsAttended}/{clsTotal} logged ({clsPct}%)
                                       </span>
                                     ) : (
                                       <span className="text-slate-500">Att: No logs</span>

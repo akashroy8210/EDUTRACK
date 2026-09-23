@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Plus,
   BookOpen,
+  CircleNotch,
 } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 
@@ -38,6 +39,7 @@ export default function Exams({ state, onUpdate }: Props) {
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
+  const [isSavingExam, setIsSavingExam] = useState(false);
 
   const [form, setForm] = useState({
     subjectName: '',
@@ -80,54 +82,59 @@ export default function Exams({ state, onUpdate }: Props) {
   };
 
   const saveExam = async () => {
-    if (!form.subjectName.trim() || !form.date) return;
+    if (isSavingExam || !form.subjectName.trim() || !form.date) return;
+    setIsSavingExam(true);
 
-    if (editingExam) {
-      try {
-        await examsApi.update(editingExam.id, form);
-      } catch {}
-      onUpdate(state.exams.map(e => (e.id === editingExam.id ? { ...e, ...form } : e)));
-      toast.success(`Updated assessment "${form.subjectName}"`);
-    } else {
-      try {
-        const res = await examsApi.create({
-          subjectName: form.subjectName.trim(),
-          type: form.type,
-          date: form.date,
-          time: form.time.trim(),
-          room: form.room.trim(),
-          syllabus: form.syllabus.trim(),
-          status: form.status,
-        });
-        const created = res.exam || res;
-        const newExam: Exam = {
-          id: created._id || created.id || `e${Date.now()}`,
-          subjectName: created.subjectName || form.subjectName.trim(),
-          type: created.type || form.type,
-          date: created.date || form.date,
-          time: created.time || form.time.trim(),
-          room: created.room || form.room.trim(),
-          syllabus: created.syllabus || form.syllabus.trim(),
-          status: created.status || form.status,
-        };
-        onUpdate([...state.exams, newExam]);
-      } catch {
-        const newExam: Exam = {
-          id: `e${Date.now()}`,
-          subjectName: form.subjectName.trim(),
-          type: form.type,
-          date: form.date,
-          time: form.time.trim(),
-          room: form.room.trim(),
-          syllabus: form.syllabus.trim(),
-          status: form.status,
-        };
-        onUpdate([...state.exams, newExam]);
+    try {
+      if (editingExam) {
+        try {
+          await examsApi.update(editingExam.id, form);
+        } catch {}
+        onUpdate(state.exams.map(e => (e.id === editingExam.id ? { ...e, ...form } : e)));
+        toast.success(`Updated assessment "${form.subjectName}"`);
+      } else {
+        try {
+          const res = await examsApi.create({
+            subjectName: form.subjectName.trim(),
+            type: form.type,
+            date: form.date,
+            time: form.time.trim(),
+            room: form.room.trim(),
+            syllabus: form.syllabus.trim(),
+            status: form.status,
+          });
+          const created = res.exam || res;
+          const newExam: Exam = {
+            id: created._id || created.id || `e${Date.now()}`,
+            subjectName: created.subjectName || form.subjectName.trim(),
+            type: created.type || form.type,
+            date: created.date || form.date,
+            time: created.time || form.time.trim(),
+            room: created.room || form.room.trim(),
+            syllabus: created.syllabus || form.syllabus.trim(),
+            status: created.status || form.status,
+          };
+          onUpdate([...state.exams, newExam]);
+        } catch {
+          const newExam: Exam = {
+            id: `e${Date.now()}`,
+            subjectName: form.subjectName.trim(),
+            type: form.type,
+            date: form.date,
+            time: form.time.trim(),
+            room: form.room.trim(),
+            syllabus: form.syllabus.trim(),
+            status: form.status,
+          };
+          onUpdate([...state.exams, newExam]);
+        }
+        toast.success(`Added new ${form.type}: "${form.subjectName}"`);
       }
-      toast.success(`Added new ${form.type}: "${form.subjectName}"`);
+      setShowAddModal(false);
+      setEditingExam(null);
+    } finally {
+      setIsSavingExam(false);
     }
-    setShowAddModal(false);
-    setEditingExam(null);
   };
 
   const deleteExam = async (id: string) => {
@@ -291,10 +298,11 @@ export default function Exams({ state, onUpdate }: Props) {
               </button>
               <button
                 onClick={saveExam}
-                disabled={!form.subjectName.trim() || !form.date}
-                className="px-5 py-2 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40"
+                disabled={isSavingExam || !form.subjectName.trim() || !form.date}
+                className="px-5 py-2 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
               >
-                {editingExam ? 'Save Changes' : 'Create Assessment'}
+                {isSavingExam && <CircleNotch size={14} weight="bold" className="animate-spin" />}
+                <span>{isSavingExam ? 'Saving...' : editingExam ? 'Save Changes' : 'Create Assessment'}</span>
               </button>
             </div>
           </div>
