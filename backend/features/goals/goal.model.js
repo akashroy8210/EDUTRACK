@@ -35,7 +35,7 @@ const goalSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['1-month', 'short-term', 'long-term'],
+      enum: ['1-month', 'one-month', 'short-term', 'long-term'],
       default: 'short-term',
       required: true,
     },

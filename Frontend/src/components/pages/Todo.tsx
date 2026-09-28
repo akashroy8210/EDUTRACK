@@ -78,7 +78,7 @@ export default function Todo({ state, onUpdate }: Props) {
       });
       const created = res.task || res;
       const item: TodoItem = {
-        id: created._id || created.id || `t${Date.now()}`,
+        id: created._id || created.id,
         text: created.title || newText.trim(),
         completed: false,
         type: created.type || 'daily',
@@ -88,18 +88,8 @@ export default function Todo({ state, onUpdate }: Props) {
       onUpdate([item, ...state.todos]);
       setNewText('');
       toast.success(`Added ${newPriority.toUpperCase()} priority task: "${item.text}"`);
-    } catch {
-      const item: TodoItem = {
-        id: `t${Date.now()}`,
-        text: newText.trim(),
-        completed: false,
-        type: 'daily',
-        priority: newPriority,
-        createdAt: today,
-      };
-      onUpdate([item, ...state.todos]);
-      setNewText('');
-      toast.success(`Added task: "${item.text}"`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to add task to server.');
     } finally {
       setIsAddingTodo(false);
     }
@@ -111,22 +101,24 @@ export default function Todo({ state, onUpdate }: Props) {
     const willBeDone = !todo.completed;
     try {
       await dailyWorksApi.toggle(id, true);
-    } catch { }
-    onUpdate(
-      state.todos.map(t =>
-        t.id === id
-          ? {
-            ...t,
-            completed: willBeDone,
-            completedAt: willBeDone ? today : undefined,
-          }
-          : t
-      )
-    );
-    if (willBeDone) {
-      toast.success(`Completed: "${todo.text}"`);
-    } else {
-      toast.info(`Reopened: "${todo.text}"`);
+      onUpdate(
+        state.todos.map(t =>
+          t.id === id
+            ? {
+              ...t,
+              completed: willBeDone,
+              completedAt: willBeDone ? today : undefined,
+            }
+            : t
+        )
+      );
+      if (willBeDone) {
+        toast.success(`Completed: "${todo.text}"`);
+      } else {
+        toast.info(`Reopened: "${todo.text}"`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to toggle task.');
     }
   };
 
@@ -159,9 +151,11 @@ export default function Todo({ state, onUpdate }: Props) {
     const next = nextPriority[current];
     try {
       await dailyWorksApi.updatePriority(id, next);
-    } catch { }
-    onUpdate(state.todos.map(t => (t.id === id ? { ...t, priority: next } : t)));
-    toast.info(`Priority updated to ${next.toUpperCase()}`);
+      onUpdate(state.todos.map(t => (t.id === id ? { ...t, priority: next } : t)));
+      toast.info(`Priority updated to ${next.toUpperCase()}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update priority.');
+    }
   };
 
   const startEditTodo = (t: TodoItem) => {
@@ -181,42 +175,46 @@ export default function Todo({ state, onUpdate }: Props) {
         priority: editPriority,
         type: editType,
       });
+      onUpdate(
+        state.todos.map(t =>
+          t.id === editingTodo.id
+            ? {
+              ...t,
+              text: newTitle,
+              priority: editPriority,
+              type: editType,
+            }
+            : t
+        )
+      );
+      toast.success(`Updated task: "${newTitle}"`);
+      setEditingTodo(null);
     } catch (err: any) {
-      console.error('Failed to update task on backend:', err);
+      toast.error(err?.message || 'Failed to update task on server.');
     } finally {
       setIsSavingEditTodo(false);
     }
-    onUpdate(
-      state.todos.map(t =>
-        t.id === editingTodo.id
-          ? {
-            ...t,
-            text: newTitle,
-            priority: editPriority,
-            type: editType,
-          }
-          : t
-      )
-    );
-    toast.success(`Updated task: "${newTitle}"`);
-    setEditingTodo(null);
   };
 
   const remove = async (id: string) => {
     const todo = state.todos.find(t => t.id === id);
     try {
       await dailyWorksApi.delete(id);
-    } catch { }
-    onUpdate(state.todos.filter(t => t.id !== id));
-    toast.info(`Deleted task "${todo?.text || ''}"`);
+      onUpdate(state.todos.filter(t => t.id !== id));
+      toast.info(`Deleted task "${todo?.text || ''}"`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete task.');
+    }
   };
 
   const resetDaily = async () => {
     try {
       await dailyWorksApi.resetDaily();
-    } catch { }
-    onUpdate(state.todos.map(t => (t.type === 'daily' ? { ...t, completed: false, completedAt: undefined } : t)));
-    toast.success('Reset all daily tasks for today');
+      onUpdate(state.todos.map(t => (t.type === 'daily' ? { ...t, completed: false, completedAt: undefined } : t)));
+      toast.success('Reset all daily tasks for today');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to reset daily tasks.');
+    }
   };
 
   // Completion graph - last 7 days

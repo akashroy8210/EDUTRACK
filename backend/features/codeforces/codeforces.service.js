@@ -98,7 +98,8 @@ async function getUserRatingHistory(handle) {
 
     const data = await res.json();
     if (data.status !== 'OK' || !Array.isArray(data.result)) {
-      throw new ApiError(404, data.comment || `No rating history found for "${cleanHandle}".`, 'NOT_FOUND');
+      cache.ratings.set(cleanHandle.toLowerCase(), { timestamp: Date.now(), data: [] });
+      return [];
     }
 
     cache.ratings.set(cleanHandle.toLowerCase(), { timestamp: Date.now(), data: data.result });

@@ -12,6 +12,7 @@ router.use(authMiddleware);
 router.get('/subjects', academicsController.getSubjects);
 router.get('/subjects/:id', academicsController.getSubjectDetail);
 router.post('/subjects', validateMiddleware(validateSubject), academicsController.createSubject);
+router.put('/subjects/:id', academicsController.updateSubject);
 router.delete('/subjects/:id', academicsController.deleteSubject);
 
 // Timetable Schedule

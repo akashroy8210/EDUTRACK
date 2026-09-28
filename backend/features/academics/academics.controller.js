@@ -161,6 +161,15 @@ async function getAttendanceSummary(req, res, next) {
   }
 }
 
+async function updateSubject(req, res, next) {
+  try {
+    const subject = await academicsService.updateSubject(req.user.id, req.params.id, req.body);
+    return success(res, { subject });
+  } catch (err) {
+    next(err);
+  }
+}
+
 /**
  * Handles DELETE /api/academics/subjects/:id
  * Deletes a subject and its associated class sessions and attendance history.
@@ -178,6 +187,7 @@ module.exports = {
   getSubjects,
   getSubjectDetail,
   createSubject,
+  updateSubject,
   deleteSubject,
   getSchedule,
   addClassSession,

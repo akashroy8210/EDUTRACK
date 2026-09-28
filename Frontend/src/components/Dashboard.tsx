@@ -41,6 +41,8 @@ import {
   SignOut,
   X,
   Trophy,
+  Sparkle,
+  CircleNotch,
 } from '@phosphor-icons/react';
 
 type Page =
@@ -59,6 +61,7 @@ type Page =
 export default function Dashboard() {
   const [state, setState] = useState<AppState>(() => loadState());
   const [page, setPage] = useState<Page>('dashboard');
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
 
@@ -194,11 +197,11 @@ export default function Dashboard() {
         patch.exams = examsRes.value.exams.map((e: any) => ({
           id: e._id || e.id,
           subjectName: e.subjectName,
-          type: e.type,
+          type: e.type || 'quiz',
           date: e.date,
-          time: e.time,
-          room: e.room,
-          syllabus: e.syllabus,
+          time: e.time || '',
+          room: e.room || '',
+          syllabus: e.syllabus || '',
           status: e.status || 'upcoming',
         }));
       }
@@ -208,7 +211,7 @@ export default function Dashboard() {
           id: g._id || g.id,
           title: g.title,
           description: g.description,
-          type: g.type,
+          type: (g.type === '1-month' ? 'one-month' : (g.type || 'short-term')),
           deadline: g.deadline,
           progress: g.progress ?? 0,
           achievements: (g.achievements || []).map((a: any) => ({
@@ -248,25 +251,23 @@ export default function Dashboard() {
 
   // Verify auth session (cookie or localStorage token) on initial mount
   useEffect(() => {
+    let isMounted = true;
     authApi.getMe()
-      .then(res => {
-        if (res?.user) {
+      .then(async res => {
+        if (res?.user && isMounted) {
           update({ isLoggedIn: true, user: res.user });
-          refreshBackendData();
+          await refreshBackendData();
         }
       })
       .catch(() => {
         localStorage.removeItem('mydashboard_token');
-        update({ isLoggedIn: false });
+        if (isMounted) update({ isLoggedIn: false });
+      })
+      .finally(() => {
+        if (isMounted) setIsInitialLoading(false);
       });
+    return () => { isMounted = false; };
   }, [refreshBackendData, update]);
-
-  // Always fetch latest data from backend on page change and whenever logged in
-  useEffect(() => {
-    if (state.isLoggedIn) {
-      refreshBackendData();
-    }
-  }, [page, state.isLoggedIn, refreshBackendData]);
 
   const handleLogin = (userData?: Partial<UserProfile>, isNewRegistration?: boolean) => {
     update({
@@ -367,6 +368,33 @@ export default function Dashboard() {
       toast.info(`Reopened task: "${todo?.text}"`);
     }
   };
+
+  if (isInitialLoading) {
+    return (
+      <div className="fixed inset-0 bg-[#0d1117] flex flex-col items-center justify-center z-50">
+        <motion.div
+          initial={{ scale: 0.85, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="flex flex-col items-center gap-4 text-center px-4"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
+            <Sparkle size={32} weight="fill" className="animate-pulse text-indigo-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold tracking-wider text-slate-100 uppercase" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+              EduTrack
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Connecting to live student server...</p>
+          </div>
+          <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-800">
+            <CircleNotch size={15} className="animate-spin text-indigo-400" />
+            <span className="text-[11px] text-slate-400 font-mono">Syncing real-time database...</span>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (!state.isLoggedIn) return <Login onLogin={handleLogin} />;
   const pages: Record<Page, React.ReactNode> = {

@@ -1,16 +1,23 @@
+const mongoose = require('mongoose');
 const Goal = require('./goal.model');
 const { getTodayDate } = require('../../utils/dateUtils');
 const { ApiError } = require('../../middleware/error.middleware');
 
 async function getGoals(userId, type) {
   const query = { userId };
-  if (type) query.type = type;
+  if (type) {
+    if (type === '1-month' || type === 'one-month') {
+      query.type = { $in: ['1-month', 'one-month'] };
+    } else {
+      query.type = type;
+    }
+  }
   return await Goal.find(query).sort({ deadline: 1 });
 }
 
 async function createGoal(userId, { title, description, type, deadline, targetDate, progress }) {
   const finalDeadline = deadline || targetDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const finalType = type === 'one-month' ? '1-month' : (type || 'short-term');
+  const finalType = (type === 'one-month' || type === '1-month') ? '1-month' : (type || 'short-term');
   const validProgress = Math.min(100, Math.max(0, Number(progress) || 0));
   return await Goal.create({
     userId,
@@ -25,6 +32,10 @@ async function createGoal(userId, { title, description, type, deadline, targetDa
 }
 
 async function updateGoal(userId, id, updateData) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(404, 'Goal not found.', 'NOT_FOUND');
+  }
+
   const goal = await Goal.findOne({ _id: id, userId });
   if (!goal) {
     throw new ApiError(404, 'Goal not found.', 'NOT_FOUND');
@@ -47,6 +58,10 @@ async function updateGoal(userId, id, updateData) {
 }
 
 async function addAchievement(userId, goalId, { text, date }) {
+  if (!mongoose.Types.ObjectId.isValid(goalId)) {
+    throw new ApiError(404, 'Goal not found.', 'NOT_FOUND');
+  }
+
   const goal = await Goal.findOne({ _id: goalId, userId });
   if (!goal) {
     throw new ApiError(404, 'Goal not found.', 'NOT_FOUND');
@@ -62,6 +77,10 @@ async function addAchievement(userId, goalId, { text, date }) {
 }
 
 async function deleteAchievement(userId, goalId, achievementId) {
+  if (!mongoose.Types.ObjectId.isValid(goalId)) {
+    throw new ApiError(404, 'Goal not found.', 'NOT_FOUND');
+  }
+
   const goal = await Goal.findOne({ _id: goalId, userId });
   if (!goal) {
     throw new ApiError(404, 'Goal not found.', 'NOT_FOUND');
@@ -76,6 +95,10 @@ async function deleteAchievement(userId, goalId, achievementId) {
 }
 
 async function deleteGoal(userId, id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(404, 'Goal not found.', 'NOT_FOUND');
+  }
+
   const deleted = await Goal.findOneAndDelete({ _id: id, userId });
   if (!deleted) {
     throw new ApiError(404, 'Goal not found.', 'NOT_FOUND');

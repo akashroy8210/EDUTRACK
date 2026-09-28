@@ -26,15 +26,20 @@ async function createExam(userId, data) {
     subjectName: data.subjectName.trim(),
     subjectCode: (data.subjectCode || data.code || (data.subjectName ? data.subjectName.slice(0, 6) : 'EXAM')).trim().toUpperCase(),
     date: data.date,
-    time: data.time,
-    room: data.room || 'Hall A',
-    type: data.type || 'midterm',
+    time: (data.time || '').trim(),
+    room: (data.room || 'Hall A').trim(),
+    syllabus: (data.syllabus || '').trim(),
+    type: data.type || 'quiz',
     weightage: data.weightage || '25%',
     status: data.status || 'upcoming',
   });
 }
 
 async function updateExam(userId, id, data) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(404, 'Exam not found.', 'NOT_FOUND');
+  }
+
   const exam = await Exam.findOne({ _id: id, userId });
   if (!exam) {
     throw new ApiError(404, 'Exam not found.', 'NOT_FOUND');
@@ -50,7 +55,7 @@ async function updateExam(userId, id, data) {
     }
   }
 
-  const fields = ['subjectId', 'subjectName', 'subjectCode', 'date', 'time', 'room', 'type', 'weightage', 'status'];
+  const fields = ['subjectId', 'subjectName', 'subjectCode', 'date', 'time', 'room', 'syllabus', 'type', 'weightage', 'status'];
   fields.forEach(f => {
     if (data[f] !== undefined) exam[f] = data[f];
   });
@@ -60,6 +65,10 @@ async function updateExam(userId, id, data) {
 }
 
 async function deleteExam(userId, id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(404, 'Exam not found.', 'NOT_FOUND');
+  }
+
   const deleted = await Exam.findOneAndDelete({ _id: id, userId });
   if (!deleted) {
     throw new ApiError(404, 'Exam not found.', 'NOT_FOUND');

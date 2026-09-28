@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const codeforcesController = require('./codeforces.controller');
-const { requireAuth } = require('../../middleware/auth.middleware');
+const { authMiddleware } = require('../../middleware/auth.middleware');
 
 // Public or authenticated endpoints for Codeforces proxying
 router.get('/contests', codeforcesController.getUpcomingContests);

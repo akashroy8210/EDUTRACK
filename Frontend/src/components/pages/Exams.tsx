@@ -87,51 +87,37 @@ export default function Exams({ state, onUpdate }: Props) {
 
     try {
       if (editingExam) {
-        try {
-          await examsApi.update(editingExam.id, form);
-        } catch {}
+        await examsApi.update(editingExam.id, form);
         onUpdate(state.exams.map(e => (e.id === editingExam.id ? { ...e, ...form } : e)));
         toast.success(`Updated assessment "${form.subjectName}"`);
       } else {
-        try {
-          const res = await examsApi.create({
-            subjectName: form.subjectName.trim(),
-            type: form.type,
-            date: form.date,
-            time: form.time.trim(),
-            room: form.room.trim(),
-            syllabus: form.syllabus.trim(),
-            status: form.status,
-          });
-          const created = res.exam || res;
-          const newExam: Exam = {
-            id: created._id || created.id || `e${Date.now()}`,
-            subjectName: created.subjectName || form.subjectName.trim(),
-            type: created.type || form.type,
-            date: created.date || form.date,
-            time: created.time || form.time.trim(),
-            room: created.room || form.room.trim(),
-            syllabus: created.syllabus || form.syllabus.trim(),
-            status: created.status || form.status,
-          };
-          onUpdate([...state.exams, newExam]);
-        } catch {
-          const newExam: Exam = {
-            id: `e${Date.now()}`,
-            subjectName: form.subjectName.trim(),
-            type: form.type,
-            date: form.date,
-            time: form.time.trim(),
-            room: form.room.trim(),
-            syllabus: form.syllabus.trim(),
-            status: form.status,
-          };
-          onUpdate([...state.exams, newExam]);
-        }
-        toast.success(`Added new ${form.type}: "${form.subjectName}"`);
+        const res = await examsApi.create({
+          subjectName: form.subjectName.trim(),
+          type: form.type,
+          date: form.date,
+          time: form.time.trim(),
+          room: form.room.trim(),
+          syllabus: form.syllabus.trim(),
+          status: form.status,
+        });
+        const created = res.exam || res;
+        const newExam: Exam = {
+          id: created._id || created.id,
+          subjectName: created.subjectName || form.subjectName.trim(),
+          type: created.type || form.type,
+          date: created.date || form.date,
+          time: created.time || form.time.trim(),
+          room: created.room || form.room.trim(),
+          syllabus: created.syllabus || form.syllabus.trim(),
+          status: created.status || form.status,
+        };
+        onUpdate([...state.exams, newExam]);
+        toast.success(`Added new assessment: "${form.subjectName}"`);
       }
       setShowAddModal(false);
       setEditingExam(null);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save assessment to server.');
     } finally {
       setIsSavingExam(false);
     }
@@ -141,21 +127,25 @@ export default function Exams({ state, onUpdate }: Props) {
     const exam = state.exams.find(e => e.id === id);
     try {
       await examsApi.delete(id);
-    } catch {}
-    onUpdate(state.exams.filter(e => e.id !== id));
-    toast.info(`Deleted assessment "${exam?.subjectName || ''}"`);
+      onUpdate(state.exams.filter(e => e.id !== id));
+      toast.info(`Deleted assessment "${exam?.subjectName || ''}"`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete assessment from server.');
+    }
   };
 
   const toggleStatus = async (exam: Exam) => {
     const nextStatus = exam.status === 'completed' ? 'upcoming' : 'completed';
     try {
       await examsApi.update(exam.id, { status: nextStatus });
-    } catch {}
-    onUpdate(state.exams.map(e => (e.id === exam.id ? { ...e, status: nextStatus } : e)));
-    if (nextStatus === 'completed') {
-      toast.success(`Marked "${exam.subjectName}" as Completed! 🎓`);
-    } else {
-      toast.info(`Marked "${exam.subjectName}" as Upcoming`);
+      onUpdate(state.exams.map(e => (e.id === exam.id ? { ...e, status: nextStatus } : e)));
+      if (nextStatus === 'completed') {
+        toast.success(`Marked "${exam.subjectName}" as Completed! 🎓`);
+      } else {
+        toast.info(`Marked "${exam.subjectName}" as Upcoming`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update assessment status.');
     }
   };
 

@@ -9,9 +9,23 @@ class ApiError extends Error {
 }
 
 function errorMiddleware(err, req, res, next) {
-  const statusCode = err.statusCode || (err.name === 'ValidationError' ? 400 : 500);
-  const code = err.code || (err.name === 'ValidationError' ? 'VALIDATION_ERROR' : 'INTERNAL_SERVER_ERROR');
-  const message = err.message || 'An unexpected error occurred.';
+  let statusCode = err.statusCode;
+  let code = err.code;
+  let message = err.message || 'An unexpected error occurred.';
+
+  if (!statusCode) {
+    if (err.name === 'ValidationError') {
+      statusCode = 400;
+      code = 'VALIDATION_ERROR';
+    } else if (err.name === 'CastError') {
+      statusCode = 400;
+      code = 'INVALID_ID';
+      message = `Invalid ID format for ${err.path}: ${err.value}`;
+    } else {
+      statusCode = 500;
+      code = 'INTERNAL_SERVER_ERROR';
+    }
+  }
 
   const response = {
     success: false,

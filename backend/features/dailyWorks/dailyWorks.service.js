@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const DailyWork = require('./dailyWork.model');
 const { getTodayDate, addDays } = require('../../utils/dateUtils');
 const { ApiError } = require('../../middleware/error.middleware');
@@ -61,6 +62,10 @@ async function createDailyWork(userId, { title, priority, type }) {
 }
 
 async function toggleDailyWork(userId, id, forceConfirmLowerPriority = false) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(404, 'Task not found.', 'NOT_FOUND');
+  }
+
   const task = await DailyWork.findOne({ _id: id, userId });
   if (!task) {
     throw new ApiError(404, 'Task not found.', 'NOT_FOUND');
@@ -102,6 +107,10 @@ async function toggleDailyWork(userId, id, forceConfirmLowerPriority = false) {
 }
 
 async function updatePriority(userId, id, nextPriority) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(404, 'Task not found.', 'NOT_FOUND');
+  }
+
   const task = await DailyWork.findOne({ _id: id, userId });
   if (!task) {
     throw new ApiError(404, 'Task not found.', 'NOT_FOUND');
@@ -112,6 +121,10 @@ async function updatePriority(userId, id, nextPriority) {
 }
 
 async function updateDailyWork(userId, id, { title, priority, type }) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(404, 'Task not found.', 'NOT_FOUND');
+  }
+
   const task = await DailyWork.findOne({ _id: id, userId });
   if (!task) {
     throw new ApiError(404, 'Task not found.', 'NOT_FOUND');
@@ -132,6 +145,10 @@ async function updateDailyWork(userId, id, { title, priority, type }) {
 }
 
 async function deleteDailyWork(userId, id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(404, 'Task not found.', 'NOT_FOUND');
+  }
+
   const deleted = await DailyWork.findOneAndDelete({ _id: id, userId });
   if (!deleted) {
     throw new ApiError(404, 'Task not found.', 'NOT_FOUND');

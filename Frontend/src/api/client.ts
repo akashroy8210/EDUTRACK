@@ -97,6 +97,7 @@ export const academicsApi = {
   getSubjects: () => api.get<{ subjects: any[] }>('/academics/subjects'),
   getSubjectDetail: (id: string) => api.get<any>(`/academics/subjects/${id}`),
   createSubject: (data: any) => api.post<{ subject: any }>('/academics/subjects', data),
+  updateSubject: (id: string, data: any) => api.put<{ subject: any }>(`/academics/subjects/${id}`, data),
   deleteSubject: (id: string) => api.delete(`/academics/subjects/${id}`),
   getSchedule: () => api.get<{ schedule: any[] }>('/academics/schedule'),
   addScheduleSlot: (data: any) => api.post<{ session: any }>('/academics/schedule', data),

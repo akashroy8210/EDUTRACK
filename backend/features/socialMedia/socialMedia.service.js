@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const SocialPlatform = require('./socialPlatform.model');
 const SocialRecord = require('./socialRecord.model');
 const { getTodayDate, addDays } = require('../../utils/dateUtils');
@@ -50,39 +51,21 @@ async function logUsage(userId, { platformId, date, minutesSpent }) {
   }
 
   // Verify platform belongs to user
+  if (!mongoose.Types.ObjectId.isValid(platformId)) {
+    throw new ApiError(404, 'Social media platform not found.', 'NOT_FOUND');
+  }
+
   const platform = await SocialPlatform.findOne({ _id: platformId, userId });
   if (!platform) {
     throw new ApiError(404, 'Social media platform not found.', 'NOT_FOUND');
   }
 
-  // 1. Enforce historical immutability: past records cannot be edited once recorded
-  const existingRecord = await SocialRecord.findOne({ userId, platformId, date: targetDate });
-  if (existingRecord) {
-    throw new ApiError(
-      409,
-      `A usage record for ${platform.name} on ${targetDate} is already logged and cannot be edited.`,
-      'RECORD_IMMUTABLE'
-    );
-  }
-
-  // 2. Enforce sequential days: must not skip dates
-  const latestRecord = await SocialRecord.findOne({ userId, platformId }).sort({ date: -1 });
-  if (latestRecord) {
-    const expectedNextDate = addDays(latestRecord.date, 1);
-    if (targetDate < expectedNextDate) {
-      throw new ApiError(
-        400,
-        `Cannot insert historical records out of chronological sequence. Expected date: ${expectedNextDate}.`,
-        'DATE_OUT_OF_ORDER'
-      );
-    }
-    if (targetDate > expectedNextDate) {
-      throw new ApiError(
-        400,
-        `Sequential day entry required. You must enter ${expectedNextDate} before entering ${targetDate}.`,
-        'DATE_SEQUENCE_GAP'
-      );
-    }
+  // Upsert record for the targetDate
+  let record = await SocialRecord.findOne({ userId, platformId, date: targetDate });
+  if (record) {
+    record.minutesSpent = Math.max(0, Number(minutesSpent) || 0);
+    await record.save();
+    return record;
   }
 
   return await SocialRecord.create({

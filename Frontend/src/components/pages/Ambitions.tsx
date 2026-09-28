@@ -91,30 +91,19 @@ export default function Ambitions({ state, onUpdate }: Props) {
     setIsSaving(true);
     try {
       if (editingId) {
-        try {
-          await goalsApi.update(editingId, form);
-        } catch (err) {
-          console.warn('Could not update goal on backend:', err);
-        }
+        await goalsApi.update(editingId, form);
         onUpdate(state.ambitions.map(a => (a.id === editingId ? { ...a, ...form } : a)));
         toast.success(`Updated ambition "${form.title}"`);
       } else {
-        let createdId = `a${Date.now()}`;
-        try {
-          const res = await goalsApi.create({
-            title: form.title.trim(),
-            description: form.description.trim(),
-            type: form.type,
-            deadline: form.deadline || undefined,
-          });
-          const created = res.goal || res;
-          if (created?._id || created?.id) createdId = created._id || created.id;
-        } catch (err) {
-          console.warn('Could not create goal on backend:', err);
-        }
-
+        const res = await goalsApi.create({
+          title: form.title.trim(),
+          description: form.description.trim(),
+          type: form.type,
+          deadline: form.deadline || undefined,
+        });
+        const created = res.goal || res;
         const a: Ambition = {
-          id: createdId,
+          id: created?._id || created?.id,
           title: form.title.trim(),
           description: form.description.trim(),
           type: form.type,
@@ -124,12 +113,14 @@ export default function Ambitions({ state, onUpdate }: Props) {
           createdAt: today,
         };
         onUpdate([...state.ambitions, a]);
-        toast.success(`Created new ${form.type}: "${a.title}"`);
+        toast.success(`Created new ambition: "${a.title}"`);
       }
 
       setForm({ title: '', description: '', type: 'one-month', deadline: '' });
       setShowForm(false);
       setEditingId(null);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save ambition to server.');
     } finally {
       setIsSaving(false);
     }
@@ -155,11 +146,11 @@ export default function Ambitions({ state, onUpdate }: Props) {
     const amb = state.ambitions.find(a => a.id === id);
     try {
       await goalsApi.delete(id);
-    } catch (err) {
-      console.warn('Could not delete goal on backend:', err);
+      onUpdate(state.ambitions.filter(a => a.id !== id));
+      toast.info(`Deleted ambition "${amb?.title || ''}"`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete ambition.');
     }
-    onUpdate(state.ambitions.filter(a => a.id !== id));
-    toast.info(`Deleted ambition "${amb?.title || ''}"`);
   };
 
   const addAchievement = async (ambitionId: string) => {
@@ -224,7 +215,11 @@ export default function Ambitions({ state, onUpdate }: Props) {
     toast.info('Milestone removed from database');
   };
 
-  const filtered = state.ambitions.filter(a => filter === 'all' || a.type === filter);
+  const filtered = state.ambitions.filter(a => {
+    if (filter === 'all') return true;
+    if (filter === 'one-month') return a.type === 'one-month' || (a.type as string) === '1-month';
+    return a.type === filter;
+  });
 
   return (
     <div className="space-y-6">

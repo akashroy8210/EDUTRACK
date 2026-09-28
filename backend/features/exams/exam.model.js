@@ -29,16 +29,21 @@ const examSchema = new mongoose.Schema(
     },
     time: {
       type: String, // e.g. '10:00 AM'
-      required: true,
+      default: '',
     },
     room: {
       type: String,
       default: 'Hall A',
     },
+    syllabus: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     type: {
       type: String,
-      enum: ['midterm', 'final', 'quiz'],
-      default: 'midterm',
+      enum: ['end-sem', 'mid-sem', 'quiz', 'assignment', 'midterm', 'final'],
+      default: 'quiz',
     },
     weightage: {
       type: String,
@@ -46,7 +51,7 @@ const examSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['upcoming', 'ongoing', 'completed'],
+      enum: ['upcoming', 'ongoing', 'completed', 'missed'],
       default: 'upcoming',
     },
   },

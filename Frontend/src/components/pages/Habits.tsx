@@ -76,22 +76,24 @@ export default function Habits({ state, onUpdate }: Props) {
 
   const toggle = async (id: string) => {
     const habit = state.habits.find(h => h.id === id);
-    const willBeDone = !habit?.completionHistory[today];
+    const willBeDone = !habit?.completionHistory?.[today];
     try {
       await commonWorksApi.toggle(id, today);
-    } catch {}
-    onUpdate(
-      state.habits.map(h => {
-        if (h.id !== id) return h;
-        const history = { ...h.completionHistory };
-        history[today] = !history[today];
-        return { ...h, completionHistory: history };
-      })
-    );
-    if (willBeDone) {
-      toast.success(`Completed habit: "${habit?.text}" 🔥`);
-    } else {
-      toast.info(`Habit unchecked: "${habit?.text}"`);
+      onUpdate(
+        state.habits.map(h => {
+          if (h.id !== id) return h;
+          const history = { ...(h.completionHistory || {}) };
+          history[today] = !history[today];
+          return { ...h, completionHistory: history };
+        })
+      );
+      if (willBeDone) {
+        toast.success(`Completed habit: "${habit?.text}" 🔥`);
+      } else {
+        toast.info(`Habit unchecked: "${habit?.text}"`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to toggle habit.');
     }
   };
 
@@ -99,36 +101,27 @@ export default function Habits({ state, onUpdate }: Props) {
     if (isAddingHabit || !newText.trim()) return;
     setIsAddingHabit(true);
     try {
-      try {
-        const res = await commonWorksApi.create({
-          title: newText.trim(),
-          icon: newIcon,
-          color: newColor,
-        });
-        const created = res.habit || res;
-        const h: HabitItem = {
-          id: created._id || created.id || `h${Date.now()}`,
-          text: created.title || newText.trim(),
-          icon: created.icon || newIcon,
-          color: created.color || newColor,
-          completionHistory: { [today]: false }
-        };
-        onUpdate([...state.habits, h]);
-      } catch {
-        const h: HabitItem = {
-          id: `h${Date.now()}`,
-          text: newText.trim(),
-          icon: newIcon,
-          color: newColor,
-          completionHistory: { [today]: false }
-        };
-        onUpdate([...state.habits, h]);
-      }
+      const res = await commonWorksApi.create({
+        title: newText.trim(),
+        icon: newIcon,
+        color: newColor,
+      });
+      const created = res.habit || res;
+      const h: HabitItem = {
+        id: created._id || created.id,
+        text: created.title || newText.trim(),
+        icon: created.icon || newIcon,
+        color: created.color || newColor,
+        completionHistory: { [today]: false }
+      };
+      onUpdate([...state.habits, h]);
       toast.success(`Added new daily habit: "${newText.trim()}"`);
       setNewText('');
       setNewIcon('🎯');
       setNewColor('#6366f1');
       setShowAdd(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to add habit to server.');
     } finally {
       setIsAddingHabit(false);
     }
@@ -138,9 +131,11 @@ export default function Habits({ state, onUpdate }: Props) {
     const habit = state.habits.find(h => h.id === id);
     try {
       await commonWorksApi.delete(id);
-    } catch {}
-    onUpdate(state.habits.filter(h => h.id !== id));
-    toast.info(`Removed habit: "${habit?.text || ''}"`);
+      onUpdate(state.habits.filter(h => h.id !== id));
+      toast.info(`Removed habit: "${habit?.text || ''}"`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete habit.');
+    }
   };
 
   // 14 days metadata with clear dates & weekdays

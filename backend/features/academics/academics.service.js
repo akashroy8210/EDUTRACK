@@ -442,7 +442,27 @@ async function markAttendance(userId, { subjectId, classId, date, status }) {
  * @param {string} id - Subject ID to remove
  * @returns {Promise<Object>} Deleted Subject document
  */
+async function updateSubject(userId, id, data) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(404, 'Subject not found.', 'NOT_FOUND');
+  }
+  const subject = await Subject.findOne({ _id: id, userId });
+  if (!subject) {
+    throw new ApiError(404, 'Subject not found.', 'NOT_FOUND');
+  }
+  const fields = ['name', 'code', 'color', 'credits', 'instructor'];
+  fields.forEach(f => {
+    if (data[f] !== undefined) subject[f] = data[f];
+  });
+  await subject.save();
+  return subject;
+}
+
 async function deleteSubject(userId, id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(404, 'Subject not found.', 'NOT_FOUND');
+  }
+
   const deleted = await Subject.findOneAndDelete({ _id: id, userId });
   if (!deleted) {
     throw new ApiError(404, 'Subject not found.', 'NOT_FOUND');
@@ -520,6 +540,7 @@ module.exports = {
   getSubjects,
   getSubjectDetail,
   createSubject,
+  updateSubject,
   deleteSubject,
   getSchedule,
   addClassSession,
