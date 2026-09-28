@@ -17,6 +17,8 @@ const blogRoutes = require('./features/blog/blog.routes');
 const examsRoutes = require('./features/exams/exams.routes');
 const dashboardRoutes = require('./features/dashboard/dashboard.routes');
 const codeforcesRoutes = require('./features/codeforces/codeforces.routes');
+const leetcodeRoutes = require('./features/leetcode/leetcode.routes');
+const selfStudyRoutes = require('./features/selfStudy/selfStudy.routes');
 
 const app = express();
 
@@ -71,6 +73,8 @@ app.use('/api/blog', blogRoutes);
 app.use('/api/exams', examsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/codeforces', codeforcesRoutes);
+app.use('/api/leetcode', leetcodeRoutes);
+app.use('/api/self-study', selfStudyRoutes);
 
 // 404 Route Handler
 app.use((req, res) => {

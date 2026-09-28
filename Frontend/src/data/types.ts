@@ -232,6 +232,8 @@ export interface UserProfile {
   photo: string;
   /** Linked Codeforces competitive programming handle */
   codeforcesHandle?: string;
+  /** Linked LeetCode username */
+  leetcodeUsername?: string;
 }
 
 /**
@@ -338,4 +340,106 @@ export interface AppState {
   todayClassAttendance: Record<string, 'present' | 'absent'>;
   /** Date for which todayClassAttendance is active (YYYY-MM-DD) */
   todayClassAttendanceDate: string;
+  /** Scheduled self-study sessions */
+  selfStudySessions?: SelfStudySession[];
+}
+
+/**
+ * Today's official LeetCode Daily Coding Challenge.
+ */
+export interface LeetCodeDailyProblem {
+  date: string;
+  problemNumber: string;
+  title: string;
+  titleSlug: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  topicTags: string[];
+  link: string;
+  status: 'not-started' | 'attempted' | 'solved';
+}
+
+/**
+ * LeetCode user profile metadata and problem breakdown.
+ */
+export interface LeetCodeProfile {
+  username: string;
+  realName: string;
+  avatar: string;
+  ranking: number;
+  currentStreak: number;
+  totalActiveDays: number;
+  totalSolved: number;
+  easySolved: number;
+  mediumSolved: number;
+  hardSolved: number;
+  recentSolvedSlugs?: string[];
+  recentAttemptedSlugs?: string[];
+}
+
+/**
+ * Historical record for a LeetCode daily problem attempt.
+ */
+export interface LeetCodeDailyRecord {
+  id?: string;
+  _id?: string;
+  date: string;
+  problemNumber: string;
+  title: string;
+  titleSlug: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  status: 'not-started' | 'attempted' | 'solved';
+  solvedAt?: string | null;
+}
+
+/**
+ * Complete LeetCode history with streaks and metrics.
+ */
+export interface LeetCodeHistory {
+  records: LeetCodeDailyRecord[];
+  currentStreak: number;
+  longestStreak: number;
+  solvedCount: number;
+  attemptedCount: number;
+  totalTracked: number;
+}
+
+/**
+ * Scheduled or completed Self Study session.
+ */
+export interface SelfStudySession {
+  id: string;
+  _id?: string;
+  subjectId?: string | null;
+  subjectName?: string;
+  activity: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  plannedMinutes: number;
+  actualMinutes: number;
+  status: 'upcoming' | 'in-progress' | 'completed' | 'missed';
+  notes?: string;
+  color?: string;
+  completedAt?: string | null;
+}
+
+/**
+ * Daily and weekly self-study summary analytics.
+ */
+export interface StudySummary {
+  today: {
+    plannedMinutes: number;
+    actualMinutes: number;
+    remainingMinutes: number;
+    completedSessions: number;
+    totalSessions: number;
+  };
+  weeklyTrend: Array<{
+    date: string;
+    day: string;
+    plannedHours: number;
+    actualHours: number;
+    plannedMinutes: number;
+    actualMinutes: number;
+  }>;
 }

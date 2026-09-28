@@ -245,3 +245,27 @@ export const codeforcesApi = {
     }
   },
 };
+
+// LeetCode API
+export const leetcodeApi = {
+  getDaily: () => api.get<{ daily: any }>('/leetcode/daily'),
+  getUser: (username: string) => api.get<{ profile: any }>(`/leetcode/user/${encodeURIComponent(username)}`),
+  connect: (username: string) => api.post<{ profile: any; message: string }>('/leetcode/connect', { username }),
+  updateDailyStatus: (data: { date: string; problemNumber?: string; title: string; titleSlug: string; difficulty: string; status: string }) =>
+    api.post<{ record: any }>('/leetcode/daily/status', data),
+  getHistory: () => api.get<any>('/leetcode/history'),
+};
+
+// Self Study API
+export const selfStudyApi = {
+  getSessions: (params?: { date?: string; startDate?: string; endDate?: string }) => {
+    const qs = params ? new URLSearchParams(params as any).toString() : '';
+    return api.get<{ sessions: any[] }>(`/self-study/sessions${qs ? `?${qs}` : ''}`);
+  },
+  create: (data: any) => api.post<{ session: any }>('/self-study/sessions', data),
+  update: (id: string, data: any) => api.put<{ session: any }>(`/self-study/sessions/${id}`, data),
+  delete: (id: string) => api.delete(`/self-study/sessions/${id}`),
+  logTimer: (id: string, data: { actualMinutes: number; status: string }) =>
+    api.post<{ session: any }>(`/self-study/sessions/${id}/timer`, data),
+  getSummary: () => api.get<any>('/self-study/summary'),
+};

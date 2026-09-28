@@ -16,6 +16,8 @@ export const DEFAULT_STATE: AppState = {
     semester: '',
     section: '',
     photo: '',
+    codeforcesHandle: '',
+    leetcodeUsername: '',
   },
   // Academic courses registered by the student
   subjects: [],

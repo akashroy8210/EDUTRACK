@@ -42,6 +42,7 @@ function sanitizeUser(user) {
     isProfileComplete: user.isProfileComplete,
     timezone: user.timezone,
     codeforcesHandle: user.codeforcesHandle || '',
+    leetcodeUsername: user.leetcodeUsername || '',
     createdAt: user.createdAt,
   };
 }

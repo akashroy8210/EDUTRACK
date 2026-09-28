@@ -25,6 +25,8 @@ import Ambitions from './pages/Ambitions';
 import Profile from './pages/Profile';
 import SocialMedia from './pages/SocialMedia';
 import Codeforces from './pages/Codeforces';
+import LeetCode from './pages/LeetCode';
+import SelfStudy from './pages/SelfStudy';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   SquaresFour,
@@ -43,6 +45,8 @@ import {
   Trophy,
   Sparkle,
   CircleNotch,
+  Code,
+  Timer,
 } from '@phosphor-icons/react';
 
 type Page =
@@ -50,6 +54,8 @@ type Page =
   | 'attendance'
   | 'schedule'
   | 'exams'
+  | 'selfStudy'
+  | 'leetcode'
   | 'blog'
   | 'todo'
   | 'habits'
@@ -428,6 +434,14 @@ export default function Dashboard() {
       />
     ),
     exams: <Exams state={state} onUpdate={(exams: Exam[]) => update({ exams })} />,
+    selfStudy: <SelfStudy state={state} />,
+    leetcode: (
+      <LeetCode
+        state={state}
+        onUpdateUser={(user: UserProfile) => update({ user })}
+        onNavigateToProfile={() => setPage('profile')}
+      />
+    ),
     habits: <Habits state={state} onUpdate={(habits: HabitItem[]) => update({ habits })} />,
     todo: <Todo state={state} onUpdate={(todos: TodoItem[]) => update({ todos })} />,
     socialMedia: <SocialMedia />,
@@ -554,7 +568,7 @@ export default function Dashboard() {
         {(() => {
           const isMoreActive =
             moreSheetOpen ||
-            ['habits', 'exams', 'socialMedia', 'ambitions', 'blog', 'profile'].includes(page);
+            ['selfStudy', 'leetcode', 'habits', 'exams', 'socialMedia', 'ambitions', 'blog', 'profile'].includes(page);
           return (
             <button
               onClick={() => setMoreSheetOpen(prev => !prev)}
@@ -613,6 +627,8 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-2 gap-2">
                 {[
+                  { page: 'selfStudy' as Page, label: 'Self Study Focus', icon: Timer, color: '#818cf8' },
+                  { page: 'leetcode' as Page, label: 'LeetCode Daily', icon: Code, color: '#f59e0b' },
                   { page: 'habits' as Page, label: 'Daily Habits', icon: Fire, color: '#f59e0b' },
                   { page: 'exams' as Page, label: 'Exams & Quizzes', icon: GraduationCap, color: '#6366f1' },
                   { page: 'codeforces' as Page, label: 'Codeforces CP', icon: Trophy, color: '#f59e0b' },

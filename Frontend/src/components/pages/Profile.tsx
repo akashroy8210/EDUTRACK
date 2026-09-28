@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AppState, UserProfile } from '@/data/types';
 import { calcAttendancePercent } from '@/data/store';
-import { profileApi, codeforcesApi } from '@/api/client';
+import { profileApi, codeforcesApi, leetcodeApi } from '@/api/client';
 import { toast } from 'sonner';
 import {
   UserCircle,
@@ -19,6 +19,7 @@ import {
   CheckCircle,
   WarningCircle,
   Trophy,
+  Code,
 } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 
@@ -38,11 +39,20 @@ export default function Profile({ state, onUpdate }: Props) {
   const [cfVerificationStatus, setCfVerificationStatus] = useState<'idle' | 'verified' | 'invalid'>('idle');
   const [cfVerifiedUser, setCfVerifiedUser] = useState<{ handle: string; rating?: number; rank?: string } | null>(null);
 
+  // LeetCode Verification State
+  const [isVerifyingLc, setIsVerifyingLc] = useState(false);
+  const [lcVerificationStatus, setLcVerificationStatus] = useState<'idle' | 'verified' | 'invalid'>('idle');
+  const [lcVerifiedUser, setLcVerifiedUser] = useState<{ username: string; ranking?: number; totalSolved?: number } | null>(null);
+
   useEffect(() => {
     setForm(state.user);
     if (state.user.codeforcesHandle) {
       setCfVerificationStatus('verified');
       setCfVerifiedUser({ handle: state.user.codeforcesHandle });
+    }
+    if (state.user.leetcodeUsername) {
+      setLcVerificationStatus('verified');
+      setLcVerifiedUser({ username: state.user.leetcodeUsername });
     }
   }, [state.user]);
 
@@ -54,6 +64,10 @@ export default function Profile({ state, onUpdate }: Props) {
         if (res.profile.codeforcesHandle) {
           setCfVerificationStatus('verified');
           setCfVerifiedUser({ handle: res.profile.codeforcesHandle });
+        }
+        if (res.profile.leetcodeUsername) {
+          setLcVerificationStatus('verified');
+          setLcVerifiedUser({ username: res.profile.leetcodeUsername });
         }
       }
     }).catch(err => {
@@ -98,6 +112,43 @@ export default function Profile({ state, onUpdate }: Props) {
     }
   };
 
+  // Verify LeetCode Username against API
+  const verifyLeetcode = async (usernameToVerify: string): Promise<boolean> => {
+    const trimmed = usernameToVerify.trim();
+    if (!trimmed) {
+      setLcVerificationStatus('idle');
+      setLcVerifiedUser(null);
+      return true;
+    }
+
+    setIsVerifyingLc(true);
+    try {
+      const res = await leetcodeApi.getUser(trimmed);
+      if (res?.profile?.username) {
+        setLcVerificationStatus('verified');
+        setLcVerifiedUser({
+          username: res.profile.username,
+          ranking: res.profile.ranking,
+          totalSolved: res.profile.totalSolved,
+        });
+        toast.success(`Verified LeetCode user: @${res.profile.username} (${res.profile.totalSolved || 0} solved)`);
+        return true;
+      } else {
+        setLcVerificationStatus('invalid');
+        setLcVerifiedUser(null);
+        toast.error(`LeetCode account "${trimmed}" was not found.`);
+        return false;
+      }
+    } catch (err: any) {
+      setLcVerificationStatus('invalid');
+      setLcVerifiedUser(null);
+      toast.error(err?.message || `Failed to verify LeetCode username "${trimmed}".`);
+      return false;
+    } finally {
+      setIsVerifyingLc(false);
+    }
+  };
+
   const save = async () => {
     if (isSaving) return;
 
@@ -113,6 +164,18 @@ export default function Profile({ state, onUpdate }: Props) {
       }
     }
 
+    // LeetCode username validation if non-empty
+    const lcUsernameTrimmed = (form.leetcodeUsername || '').trim();
+    if (lcUsernameTrimmed) {
+      if (
+        lcVerificationStatus !== 'verified' ||
+        lcVerifiedUser?.username?.toLowerCase() !== lcUsernameTrimmed.toLowerCase()
+      ) {
+        toast.error('Please verify your LeetCode username before saving.');
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const res = await profileApi.update({
@@ -123,6 +186,7 @@ export default function Profile({ state, onUpdate }: Props) {
         semester: form.semester,
         section: form.section,
         codeforcesHandle: cfHandleTrimmed,
+        leetcodeUsername: lcUsernameTrimmed,
         photo: form.photo,
       });
       const updated = res.profile || res;
@@ -413,6 +477,90 @@ export default function Profile({ state, onUpdate }: Props) {
             >
               {state.user.codeforcesHandle ? (
                 <span className="text-amber-300 font-semibold">@{state.user.codeforcesHandle}</span>
+              ) : (
+                <span className="text-slate-500 italic font-sans">Not set</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* LeetCode Username */}
+        <div className="mt-4 pt-4 border-t" style={{ borderColor: '#2d3748' }}>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs text-slate-400 font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <Code size={15} className="text-amber-400" />
+              <span>LeetCode Username</span>
+            </label>
+            {!editing && state.user.leetcodeUsername && (
+              <a
+                href={`https://leetcode.com/${state.user.leetcodeUsername}/`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold hover:underline"
+              >
+                View LeetCode Profile ↗
+              </a>
+            )}
+          </div>
+          {editing ? (
+            <div className="flex gap-2 items-center">
+              <input
+                value={form.leetcodeUsername || ''}
+                placeholder="e.g. neetcode"
+                onChange={e => {
+                  const val = e.target.value;
+                  setForm(p => ({ ...p, leetcodeUsername: val }));
+                  if (val.trim() === (state.user.leetcodeUsername || '').trim() && val.trim() !== '') {
+                    setLcVerificationStatus('verified');
+                  } else {
+                    setLcVerificationStatus('idle');
+                  }
+                }}
+                className="flex-1 rounded-xl px-3.5 py-2 text-xs outline-none font-mono"
+                style={{
+                  background: '#0d1117',
+                  border: `1px solid ${
+                    lcVerificationStatus === 'verified'
+                      ? '#22c55e'
+                      : lcVerificationStatus === 'invalid'
+                      ? '#ef4444'
+                      : '#2d3748'
+                  }`,
+                  color: '#e2e8f0',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => verifyLeetcode(form.leetcodeUsername || '')}
+                disabled={isVerifyingLc || !(form.leetcodeUsername || '').trim() || lcVerificationStatus === 'verified'}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 flex-shrink-0 cursor-pointer ${
+                  lcVerificationStatus === 'verified'
+                    ? 'bg-emerald-600 text-white cursor-default'
+                    : 'bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-40'
+                }`}
+              >
+                {isVerifyingLc ? (
+                  <>
+                    <CircleNotch size={14} weight="bold" className="animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : lcVerificationStatus === 'verified' ? (
+                  <>
+                    <Check size={14} weight="bold" />
+                    <span>Verified</span>
+                  </>
+                ) : (
+                  <span>Verify</span>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div
+              className="text-xs py-2.5 px-3.5 rounded-xl text-slate-200 font-mono"
+              style={{ background: '#0d1117', border: '1px solid #2d3748' }}
+            >
+              {state.user.leetcodeUsername ? (
+                <span className="text-amber-400 font-semibold">@{state.user.leetcodeUsername}</span>
               ) : (
                 <span className="text-slate-500 italic font-sans">Not set</span>
               )}

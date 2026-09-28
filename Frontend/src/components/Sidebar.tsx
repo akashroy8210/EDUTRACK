@@ -13,6 +13,8 @@ import {
   Sparkle,
   Globe,
   Trophy,
+  Code,
+  Timer,
 } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 
@@ -21,9 +23,11 @@ type Page =
   | 'attendance'
   | 'schedule'
   | 'exams'
+  | 'selfStudy'
+  | 'leetcode'
+  | 'codeforces'
   | 'habits'
   | 'todo'
-  | 'codeforces'
   | 'socialMedia'
   | 'ambitions'
   | 'blog'
@@ -41,6 +45,8 @@ const navItems: { page: Page; label: string; icon: any }[] = [
   { page: 'attendance', label: 'Attendance', icon: ChartPieSlice },
   { page: 'schedule', label: 'Class Schedule', icon: CalendarDots },
   { page: 'exams', label: 'Exams & Quizzes', icon: GraduationCap },
+  { page: 'selfStudy', label: 'Self Study', icon: Timer },
+  { page: 'leetcode', label: 'LeetCode Daily', icon: Code },
   { page: 'codeforces', label: 'Codeforces CP', icon: Trophy },
   { page: 'habits', label: 'Daily Habits', icon: Fire },
   { page: 'todo', label: 'Daily Tasks', icon: CheckSquareOffset },
